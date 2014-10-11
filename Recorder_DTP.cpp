@@ -14,7 +14,7 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp
 
-BEGIN_MESSAGE_MAP(CDTP_Event_VCApp, CWinApp)
+BEGIN_MESSAGE_MAP(CRecorder_DTPApp, CWinApp)
 	//{{AFX_MSG_MAP(CDTP_Event_VCApp)
 		// NOTE - the ClassWizard will add and remove mapping macros here.
 		//    DO NOT EDIT what you see in these blocks of generated code!
@@ -25,7 +25,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp construction
 
-CDTP_Event_VCApp::CDTP_Event_VCApp()
+CRecorder_DTPApp::CRecorder_DTPApp()
 {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
@@ -34,12 +34,12 @@ CDTP_Event_VCApp::CDTP_Event_VCApp()
 /////////////////////////////////////////////////////////////////////////////
 // The one and only CDTP_Event_VCApp object
 
-CDTP_Event_VCApp theApp;
+CRecorder_DTPApp theApp;
 
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp initialization
 
-BOOL CDTP_Event_VCApp::InitInstance()
+BOOL CRecorder_DTPApp::InitInstance()
 {
 	AfxEnableControlContainer();
 
@@ -49,7 +49,7 @@ BOOL CDTP_Event_VCApp::InitInstance()
 	//  the specific initialization routines you do not need.
 
 
-	CDTP_Event_VCDlg dlg;
+	CRecorder_DTPDlg dlg;
 	m_pMainWnd = &dlg;
 	int nResponse = dlg.DoModal();
 	if (nResponse == IDOK)

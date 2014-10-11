@@ -58,8 +58,8 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
 
-CDTP_Event_VCDlg::CDTP_Event_VCDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CDTP_Event_VCDlg::IDD, pParent)
+CRecorder_DTPDlg::CRecorder_DTPDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CRecorder_DTPDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CDTP_Event_VCDlg)
 	m_nRecFormat = 2;
@@ -69,7 +69,7 @@ CDTP_Event_VCDlg::CDTP_Event_VCDlg(CWnd* pParent /*=NULL*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-void CDTP_Event_VCDlg::DoDataExchange(CDataExchange* pDX)
+void CRecorder_DTPDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
@@ -80,7 +80,7 @@ void CDTP_Event_VCDlg::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 }
 
-BEGIN_MESSAGE_MAP(CDTP_Event_VCDlg, CDialog)
+BEGIN_MESSAGE_MAP(CRecorder_DTPDlg, CDialog)
 	//{{AFX_MSG_MAP(CDTP_Event_VCDlg)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
@@ -98,7 +98,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg message handlers
 
-BOOL CDTP_Event_VCDlg::OnInitDialog()
+BOOL CRecorder_DTPDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
@@ -145,7 +145,7 @@ BOOL CDTP_Event_VCDlg::OnInitDialog()
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
-void CDTP_Event_VCDlg::OnSysCommand(UINT nID, LPARAM lParam)
+void CRecorder_DTPDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
 	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
 	{
@@ -162,7 +162,7 @@ void CDTP_Event_VCDlg::OnSysCommand(UINT nID, LPARAM lParam)
 //  to draw the icon.  For MFC applications using the document/view model,
 //  this is automatically done for you by the framework.
 
-void CDTP_Event_VCDlg::OnPaint() 
+void CRecorder_DTPDlg::OnPaint() 
 {
 	if (IsIconic())
 	{
@@ -189,13 +189,13 @@ void CDTP_Event_VCDlg::OnPaint()
 
 // The system calls this to obtain the cursor to display while the user drags
 //  the minimized window.
-HCURSOR CDTP_Event_VCDlg::OnQueryDragIcon()
+HCURSOR CRecorder_DTPDlg::OnQueryDragIcon()
 {
 	return (HCURSOR) m_hIcon;
 }
 
 //Initialize board
-BOOL CDTP_Event_VCDlg::InitCtiBoard()
+BOOL CRecorder_DTPDlg::InitCtiBoard()
 {
 	char szCurPath[MAX_PATH];		//Current path
 	char szShIndex[MAX_PATH];		//path to ShIndex.ini
@@ -253,7 +253,7 @@ BOOL CDTP_Event_VCDlg::InitCtiBoard()
 }
 
 //Initialize list
-void CDTP_Event_VCDlg::InitCircuitListCtrl()
+void CRecorder_DTPDlg::InitCircuitListCtrl()
 {
 	static int ColumnWidth[6] = {40, 100, 100, 100, 120, 120};
  	LV_COLUMN lvc;
@@ -306,7 +306,7 @@ void CDTP_Event_VCDlg::InitCircuitListCtrl()
 }
 
 //Update list
-void CDTP_Event_VCDlg::UpdateCircuitListCtrl()
+void CRecorder_DTPDlg::UpdateCircuitListCtrl()
 {
 	char szNewStat[100];
 	char szOldStat[100];
@@ -360,7 +360,7 @@ void CDTP_Event_VCDlg::UpdateCircuitListCtrl()
 }
 
 
-LRESULT CDTP_Event_VCDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
+LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
 {
 	// TODO: Add your specialized code here and/or call the base class
 	int nCic;
@@ -543,7 +543,7 @@ LRESULT CDTP_Event_VCDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	return CDialog::WindowProc(message, wParam, lParam);
 }
 //Incoming call recording
-void CDTP_Event_VCDlg::OnRadioCallIn() 
+void CRecorder_DTPDlg::OnRadioCallIn() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -556,7 +556,7 @@ void CDTP_Event_VCDlg::OnRadioCallIn()
 	CicState[nCurLine].wRecDirection = CALL_IN_RECORD;
 }
 //Outgoing call recording
-void CDTP_Event_VCDlg::OnRadioCallOut() 
+void CRecorder_DTPDlg::OnRadioCallOut() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -569,7 +569,7 @@ void CDTP_Event_VCDlg::OnRadioCallOut()
 	CicState[nCurLine].wRecDirection = CALL_OUT_RECORD;	
 }
 //Mix-record
-void CDTP_Event_VCDlg::OnRadioMix() 
+void CRecorder_DTPDlg::OnRadioMix() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -583,7 +583,7 @@ void CDTP_Event_VCDlg::OnRadioMix()
 }
 
 
-void CDTP_Event_VCDlg::OnSelchangeComboCic() 
+void CRecorder_DTPDlg::OnSelchangeComboCic() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -603,7 +603,7 @@ void CDTP_Event_VCDlg::OnSelchangeComboCic()
 }
 
 
-void CDTP_Event_VCDlg::OnDestroy() 
+void CRecorder_DTPDlg::OnDestroy() 
 {
 	CDialog::OnDestroy();
 	
@@ -614,14 +614,14 @@ void CDTP_Event_VCDlg::OnDestroy()
 }
 
 
-void CDTP_Event_VCDlg::OnRadioCircuit() 
+void CRecorder_DTPDlg::OnRadioCircuit() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData(TRUE);	
 }
 
 
-void CDTP_Event_VCDlg::OnRadioCh() 
+void CRecorder_DTPDlg::OnRadioCh() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData(TRUE);

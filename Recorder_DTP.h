@@ -19,10 +19,10 @@
 // See DTP_Event_VC.cpp for the implementation of this class
 //
 
-class CDTP_Event_VCApp : public CWinApp
+class CRecorder_DTPApp : public CWinApp
 {
 public:
-	CDTP_Event_VCApp();
+	CRecorder_DTPApp();
 
 // Overrides
 	// ClassWizard generated virtual function overrides

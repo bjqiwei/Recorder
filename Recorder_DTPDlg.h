@@ -44,15 +44,15 @@ typedef struct tagCIC_STRUCT
 }CIC_STRUCT;
 
 
-class CDTP_Event_VCDlg : public CDialog
+class CRecorder_DTPDlg : public CDialog
 {
 // Construction
 public:
-	CDTP_Event_VCDlg(CWnd* pParent = NULL);	// standard constructor
+	CRecorder_DTPDlg(CWnd* pParent = NULL);	// standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CDTP_Event_VCDlg)
-	enum { IDD = IDD_DTP_EVENT_VC_DIALOG };
+	enum { IDD = IDD_RECORDER_DTP_VC_DIALOG };
 	CListCtrl	m_CicList;
 	CComboBox	m_cmbCic;
 	int		m_nRecFormat;
