@@ -10,50 +10,25 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
+#define  ColumnNumber 9
+#define  ChannelWidth 40
+#define  ChannleStatusWidth 100
+#define	 CallingWidth	100
+#define  CalleeWidth	100
+#define  IncomingDTMFWidth 120
+#define  OutDTMFWidth	120
+#define  RecordTimesWidth	100
+#define	 StartTimeWidth		100
+#define  FileNameWidth		400
 
+static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",			"主叫号码",		"被叫号码",	 "呼入DTMF",	   "外呼DTMF",		 "录音次数",	  "开始时间",	 "录音文件名称"};
+static LPTSTR ColumnName[ColumnNumber] =   {"Cic",			"CicState",			"CallerId",		"CalleeId",	 "InComingCh:DTMF","OutgoingCh:DTMF","Times",		  "StartTime",   "FileName"};
+static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	ChannleStatusWidth, CallingWidth,	CalleeWidth, IncomingDTMFWidth, OutDTMFWidth,	 RecordTimesWidth,StartTimeWidth,FileNameWidth};
+
+static LPTSTR	StateName[] = {"Idle","Receiving Phone number","Ringing","Talking",};		
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
-class CAboutDlg : public CDialog
-{
-public:
-	CAboutDlg();
-
-// Dialog Data
-	//{{AFX_DATA(CAboutDlg)
-	enum { IDD = IDD_ABOUTBOX };
-	//}}AFX_DATA
-
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CAboutDlg)
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
-
-// Implementation
-protected:
-	//{{AFX_MSG(CAboutDlg)
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-};
-
-CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
-{
-	//{{AFX_DATA_INIT(CAboutDlg)
-	//}}AFX_DATA_INIT
-}
-
-void CAboutDlg::DoDataExchange(CDataExchange* pDX)
-{
-	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CAboutDlg)
-	//}}AFX_DATA_MAP
-}
-
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
-	//{{AFX_MSG_MAP(CAboutDlg)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
@@ -102,23 +77,9 @@ BOOL CRecorder_DTPDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	// Add "About..." menu item to system menu.
-
-	// IDM_ABOUTBOX must be in the system command range.
-	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
-	ASSERT(IDM_ABOUTBOX < 0xF000);
-
+	
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	if (pSysMenu != NULL)
-	{
-		CString strAboutMenu;
-		strAboutMenu.LoadString(IDS_ABOUTBOX);
-		if (!strAboutMenu.IsEmpty())
-		{
-			pSysMenu->AppendMenu(MF_SEPARATOR);
-			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
-		}
-	}
+	
 
 	// Set the icon for this dialog.  The framework does this automatically
 	//  when the application's main window is not a dialog
@@ -147,15 +108,7 @@ BOOL CRecorder_DTPDlg::OnInitDialog()
 
 void CRecorder_DTPDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
-	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
-	{
-		CAboutDlg dlgAbout;
-		dlgAbout.DoModal();
-	}
-	else
-	{
-		CDialog::OnSysCommand(nID, lParam);
-	}
+	CDialog::OnSysCommand(nID, lParam);
 }
 
 // If you add a minimize button to your dialog, you will need the code below
@@ -235,16 +188,11 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 	CString str;
 	for(int i = 0; i < nMaxCic; i++)
 	{
-		memset(CicState[i].szCallInDtmf, 0, sizeof(char)*100);
-		memset(CicState[i].szCallOutDtmf, 0, sizeof(char)*100);
-		memset(CicState[i].szCallerId, 0, sizeof(char)*20);
-		memset(CicState[i].szCalleeId, 0, sizeof(char)*20);
 		CicState[i].nCicState = CIRCUIT_IDLE;
-		CicState[i].nCallInIndex = 0;
-		CicState[i].nCallOutIndex = 0;
 		CicState[i].wRecDirection = MIX_RECORD;	    //mix-record
 		CicState[i].nCallInCh = -1;	
 		CicState[i].nCallOutCh = -1;
+		CicState[i].nRecordTimes = 0;
 		str.Format("%d", i);
 		m_cmbCic.InsertString(-1, str);
 	}
@@ -255,10 +203,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 //Initialize list
 void CRecorder_DTPDlg::InitCircuitListCtrl()
 {
-	static int ColumnWidth[6] = {40, 100, 100, 100, 120, 120};
- 	LV_COLUMN lvc;
-	lvc.mask =  LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM ;
-
+	
 	m_CicList.SetBkColor(RGB(0,0,0));
 	m_CicList.SetTextColor(RGB(0,255,0));
 	m_CicList.SetTextBkColor(RGB(0,0,0));
@@ -268,94 +213,85 @@ void CRecorder_DTPDlg::InitCircuitListCtrl()
 	dwExtendedStyle |= LVS_EX_GRIDLINES; 
 	m_CicList.SetExtendedStyle(dwExtendedStyle);
 
-	lvc.iSubItem = 0;
-	lvc.pszText = "Cic" ;
-	lvc.cx = ColumnWidth[0];
-	m_CicList.InsertColumn(0, &lvc);
+	LV_COLUMN lvc;
+	lvc.mask =  LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM ;
 
-	lvc.iSubItem = 1;
-	lvc.pszText = "CicState";
-	lvc.cx = ColumnWidth[1];
-	m_CicList.InsertColumn(1, &lvc);
-
-	lvc.iSubItem = 2;
-	lvc.pszText = "CallerId";
-	lvc.cx = ColumnWidth[2];
-	m_CicList.InsertColumn(2, &lvc);
-    
-	lvc.iSubItem = 3;
-	lvc.pszText = "CalleeId";
-	lvc.cx = ColumnWidth[3];
-	m_CicList.InsertColumn(3, &lvc);   
-
-	lvc.iSubItem = 4;
-	lvc.pszText = "InComingCh:DTMF";
-	lvc.cx = ColumnWidth[4];
-	m_CicList.InsertColumn(4, &lvc); 
-
-	lvc.iSubItem = 5;
-	lvc.pszText = "OutgoingCh:DTMF";
-	lvc.cx = ColumnWidth[5];
-	m_CicList.InsertColumn(5, &lvc); 
-
-	char dig[10];
+	for (int i = 0; i< ColumnNumber; i++)
+	{
+		lvc.iSubItem = i;
+		lvc.pszText = ColumnNameCh[i];
+		lvc.cx = ColumnWidth[i];
+		m_CicList.InsertColumn(i, &lvc);
+	}
+	
+	CString str;
 	for(int i = 0; i < nMaxCic; i++)
 	{
-		m_CicList.InsertItem(i, _itoa(i, dig, 10));
+		str.Format("%d",i);
+		m_CicList.InsertItem(i, str);
 	}
 }
 
 //Update list
 void CRecorder_DTPDlg::UpdateCircuitListCtrl()
 {
-	char szNewStat[100];
-	char szOldStat[100];
-	int nIndex;
+	CString strNewData;
+	CString strOldData;
 
-	nIndex = 0;
-	for(int i = 0; i < nMaxCic; i++)
+	for(int nItem = 0; nItem < m_CicList.GetItemCount(); nItem++)
 	{
 		//Display the state of the monitored circuit
-		switch(CicState[i].nCicState)
+		
+		strNewData = StateName[CicState[nItem].nCicState];
+		strOldData = m_CicList.GetItemText(nItem, 1);
+		if(strOldData != strNewData)
 		{
-		case CIRCUIT_IDLE:				strcpy(szNewStat, "Idle");					  break;	
-		case CIRCUIT_RCV_PHONUM:		strcpy(szNewStat, "Receiving Phone number");  break;
-		case CIRCUIT_RINGING:			strcpy(szNewStat, "Ringing");				  break;
-		case CIRCUIT_TALKING:			strcpy(szNewStat, "Talking");			   	  break;
+			m_CicList.SetItemText(nItem, 1, strNewData);
 		}
-		m_CicList.GetItemText(nIndex, 1, szOldStat, 10);
-		if(strcmp(szOldStat, szNewStat) != 0)
-		{
-			m_CicList.SetItemText(nIndex, 1, szNewStat);
-		}
+		
 		//Display calling party number
-		m_CicList.GetItemText(nIndex, 2, szOldStat, 20);
-		if(strcmp(szOldStat, CicState[i].szCallerId) != 0)
+		strOldData = m_CicList.GetItemText(nItem, 2);
+		if(strOldData != CicState[nItem].szCallerId)
 		{
-			m_CicList.SetItemText(nIndex, 2, CicState[i].szCallerId);
+			m_CicList.SetItemText(nItem, 2, CicState[nItem].szCallerId);
 		}		
 		//Display called party number
-		m_CicList.GetItemText(nIndex, 3, szOldStat, 20);
-		if(strcmp(szOldStat, CicState[i].szCalleeId) != 0)
+		strOldData = m_CicList.GetItemText(nItem, 3);
+		if(strOldData != CicState[nItem].szCalleeId)
 		{
-			m_CicList.SetItemText(nIndex, 3, CicState[i].szCalleeId);
+			m_CicList.SetItemText(nItem, 3, CicState[nItem].szCalleeId);
 		}
 		//CDisplay incoming channel and received DTMFs in the channel
-		sprintf(szNewStat, "%d:%s", CicState[i].nCallInCh, CicState[i].szCallInDtmf);
-		m_CicList.GetItemText(nIndex, 4, szOldStat, 99);
-		if(strcmp(szOldStat, szNewStat) != 0)
+		strNewData.Format("%d:%s", CicState[nItem].nCallInCh, CicState[nItem].szCallInDtmf);
+		strOldData = m_CicList.GetItemText(nItem, 4);
+		if(strOldData != strNewData)
 		{
-			m_CicList.SetItemText(nIndex, 4, szNewStat);
+			m_CicList.SetItemText(nItem, 4, strNewData);
 		}
 		//Display outgoing channel and received DTMFs in the channel
-		sprintf(szNewStat, "%d:%s", CicState[i].nCallOutCh, CicState[i].szCallOutDtmf);
-		m_CicList.GetItemText(nIndex, 5, szOldStat, 99);
-		if(strcmp(szOldStat, szNewStat) != 0)
+		strNewData.Format("%d:%s", CicState[nItem].nCallOutCh, CicState[nItem].szCallOutDtmf);
+		strOldData = m_CicList.GetItemText(nItem, 5);
+		if(strOldData != strNewData)
 		{
-			m_CicList.SetItemText(nIndex, 5, szNewStat);
+			m_CicList.SetItemText(nItem, 5, strNewData);
+		}
+	
+		strNewData.Format("%d", CicState[nItem].nRecordTimes);
+		strOldData = m_CicList.GetItemText(nItem, 6);
+		if(strOldData != strNewData)
+		{
+			m_CicList.SetItemText(nItem, 6, strNewData);
 		}
 
-		nIndex++;		
+		if (CicState[nItem].nCicState == CIRCUIT_TALKING)
+		{
+			m_CicList.SetItemText(nItem, 7, CicState[nItem].tStartTime.Format("YYYY-MM-DD HH:MS:SS"));
+		}
+
+		if (CicState[nItem].nCicState == CIRCUIT_TALKING)
+		{
+			m_CicList.SetItemText(nItem, 8, CicState[nItem].szFileName);
+		}
 	}
 }
 
@@ -421,10 +357,8 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							}
 						}
 						CicState[nCic].nCicState = CIRCUIT_IDLE;
-						CicState[nCic].nCallInIndex = 0;
-						CicState[nCic].nCallOutIndex = 0;
-						memset(CicState[nCic].szCallInDtmf, 0, sizeof(char)*100);
-						memset(CicState[nCic].szCallOutDtmf, 0, sizeof(char)*100);
+						CicState[nCic].szCallInDtmf.Empty();
+						CicState[nCic].szCallOutDtmf.Empty();
 					}
 					break;
 				//Receiving phone number
@@ -440,11 +374,10 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				case S_SPY_RINGING:
 					{
 						CicState[nCic].nCicState = CIRCUIT_RINGING;
-						memset(CicState[nCic].szCallerId, 0, sizeof(char)*20);
-						memset(CicState[nCic].szCalleeId, 0, sizeof(char)*20);
-						if(SpyGetCallerId(nCic, CicState[nCic].szCallerId) == -1)//Get calling party number
+						
+						if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
 							MessageBox("Fail to call SpyGetCallerId");
-						if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId) == -1)//Get called party number
+						if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)//Get called party number
 							MessageBox("Fail to call SpyGetCalleeId");
 					}
 					break;			
@@ -453,11 +386,9 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						if(CicState[nCic].nCicState == CIRCUIT_RCV_PHONUM)
 						{
-							memset(CicState[nCic].szCallerId, 0, sizeof(char)*20);
-							memset(CicState[nCic].szCalleeId, 0, sizeof(char)*20);
-							if(SpyGetCallerId(nCic, CicState[nCic].szCallerId) == -1)
+							if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)
 								MessageBox("Fail to call SpyGetCallerId");
-							if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId) == -1)
+							if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)
 								MessageBox("Fail to call SpyGetCalleeId");
 						}
 						if((CicState[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
@@ -525,13 +456,11 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
 					if(nCh == CicState[nCic].nCallInCh)
 					{
-						CicState[nCic].szCallInDtmf[CicState[nCic].nCallInIndex] = cNewDtmf;
-						CicState[nCic].nCallInIndex++;
+						CicState[nCic].szCallInDtmf += cNewDtmf;
 					}
 					else if(nCh == CicState[nCic].nCallOutCh)
 					{
-						CicState[nCic].szCallOutDtmf[CicState[nCic].nCallOutIndex] = cNewDtmf;
-						CicState[nCic].nCallOutIndex++; 
+						CicState[nCic].szCallOutDtmf += cNewDtmf; 
 					}
 				}
 			}

@@ -1,10 +1,9 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
-// Used by DTP_Event_VC.rc
+// Microsoft Visual C++ generated include file.
+// Used by Recorder_DTP.rc
 //
-#define IDM_ABOUTBOX                    0x0010
-#define IDD_ABOUTBOX                    100
-#define IDS_ABOUTBOX                    101
+//#define IDM_ABOUTBOX                    0x0010
+//#define IDS_ABOUTBOX                    101
 #define IDD_RECORDER_DTP_VC_DIALOG      102
 #define IDR_MAINFRAME                   128
 #define IDC_LIST_DTP                    1001
@@ -14,8 +13,6 @@
 #define IDC_RADIO_CALL_OUT              1005
 #define IDC_RADIO_MIX                   1006
 #define IDC_STATIC_SET_RECORD           1012
-#define IDC_STATIC_EDITION              1013
-#define IDC_STATIC_COPYRIGHT            1014
 #define IDC_RADIO_CIRCUIT               1029
 #define IDC_RADIO_CH                    1030
 

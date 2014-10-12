@@ -8,6 +8,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 #include "C:\ShCti\api\Vc6.0\Inc\shpa3api.h"
+#include <string>
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
 #define MAX_CIC 1000		//Maximum number of the monitored circuits
@@ -32,15 +33,16 @@ enum RECORD_DIRECTION
 typedef struct tagCIC_STRUCT
 {
 	int  nCicState;				//State of monitored circuits
-	char szCallerId[20];		//Calling party number
-	char szCalleeId[20];		//Called party number
-	char szCallInDtmf[100];		//DTMF received on the incoming channel
-	char szCallOutDtmf[100];	//DTMF received on the outgoing channel
+	CString szCallerId;		//Calling party number
+	CString szCalleeId;		//Called party number
+	CString szCallInDtmf;		//DTMF received on the incoming channel
+	CString szCallOutDtmf;	//DTMF received on the outgoing channel
 	WORD wRecDirection;			//Recording direction
 	int  nCallInCh;				//Incoming channel
 	int  nCallOutCh;			//Outgoing channel
-	int  nCallInIndex;			//Used to denote which number is the DTMF received on the incoming channel
-	int  nCallOutIndex;			//Used to denote which number is the DTMF received on the outgoing channel
+	unsigned int nRecordTimes;  //Record Times 
+	CTime tStartTime;// record start time
+	CString szFileName; // record file name
 }CIC_STRUCT;
 
 
