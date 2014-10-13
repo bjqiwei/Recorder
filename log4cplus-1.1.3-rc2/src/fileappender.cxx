@@ -591,7 +591,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
 DailyRollingFileAppender::DailyRollingFileAppender(
     const tstring& filename_, DailyRollingFileSchedule schedule_,
     bool immediateFlush_, int maxBackupIndex_)
-    : FileAppender(filename_, std::ios::app, immediateFlush_)
+    : FileAppender(filename_, std::ios::binary, immediateFlush_)
     , maxBackupIndex(maxBackupIndex_)
 {
     init(schedule_);
@@ -601,7 +601,7 @@ DailyRollingFileAppender::DailyRollingFileAppender(
 
 DailyRollingFileAppender::DailyRollingFileAppender(
     const Properties& properties)
-    : FileAppender(properties, std::ios::app)
+    : FileAppender(properties, std::ios::binary)
     , maxBackupIndex(10)
 {
     DailyRollingFileSchedule theSchedule = DAILY;

@@ -9,6 +9,7 @@
 #endif // _MSC_VER > 1000
 #include "C:\ShCti\api\Vc6.0\Inc\shpa3api.h"
 #include <string>
+#include <log4cplus/logger.h>
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
 #define MAX_CIC 1000		//Maximum number of the monitored circuits
@@ -71,7 +72,7 @@ public:
 // Implementation
 protected:
 	HICON m_hIcon;
-
+	log4cplus::Logger log;
 	// Generated message map functions
 	//{{AFX_MSG(CDTP_Event_VCDlg)
 	virtual BOOL OnInitDialog();

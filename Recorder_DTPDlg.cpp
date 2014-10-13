@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "Recorder_DTP.h"
 #include "Recorder_DTPDlg.h"
+#include <log4cplus/loggingmacros.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -42,6 +43,8 @@ CRecorder_DTPDlg::CRecorder_DTPDlg(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
+	LOG4CPLUS_INFO(log,_T("Application start..."));
 }
 
 void CRecorder_DTPDlg::DoDataExchange(CDataExchange* pDX)
