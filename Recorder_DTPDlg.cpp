@@ -46,6 +46,10 @@ CRecorder_DTPDlg::CRecorder_DTPDlg(CWnd* pParent /*=NULL*/)
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
 	LOG4CPLUS_INFO(log,_T("Application start..."));
 }
+CRecorder_DTPDlg::~CRecorder_DTPDlg()
+{
+	LOG4CPLUS_INFO(log,_T("Application exit..."));
+}
 
 void CRecorder_DTPDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -100,11 +104,10 @@ BOOL CRecorder_DTPDlg::OnInitDialog()
 	EventSet.dwWorkMode = EVENT_MESSAGE;	
 	EventSet.lpHandlerParam = this->GetSafeHwnd();	
 	if(SsmSetEvent(-1, -1, TRUE, &EventSet) == -1)
-		MessageBox("Fail to call SsmSetEvent");
+		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent"));
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
-		MessageBox("Fail to call SsmSetEvent when setting E_CHG_SpyState");
+		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-	UpdateCircuitListCtrl();	//update list	
 	
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -167,7 +170,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-		AfxMessageBox(CErrMsg, MB_OK);
+		LOG4CPLUS_ERROR(log, (LPCSTR)CErrMsg);
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
@@ -177,7 +180,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message	
-		AfxMessageBox(CErrMsg, MB_OK);
+		LOG4CPLUS_ERROR(log, (LPCSTR)CErrMsg);
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
@@ -185,7 +188,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 	nMaxCic = SpyGetMaxCic();	  
 	if(nMaxCic == -1)
 	{
-		MessageBox("Fail to call SpyGetMaxCic");
+		LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
 	}
 
 	CString str;
@@ -207,9 +210,9 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 void CRecorder_DTPDlg::InitCircuitListCtrl()
 {
 	
-	m_CicList.SetBkColor(RGB(0,0,0));
+	/*m_CicList.SetBkColor(RGB(0,0,0));
 	m_CicList.SetTextColor(RGB(0,255,0));
-	m_CicList.SetTextBkColor(RGB(0,0,0));
+	m_CicList.SetTextBkColor(RGB(0,0,0));*/
 
 	DWORD dwExtendedStyle = m_CicList.GetExtendedStyle();
 	dwExtendedStyle |= LVS_EX_FULLROWSELECT;
@@ -333,7 +336,7 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							{
 								//stop recording
 								if(SpyStopRecToFile(nCic) == -1)
-									MessageBox("Fail to call SpyStopRecToFile");
+									LOG4CPLUS_ERROR(log, _T("Fail to call SpyStopRecToFile"));
 							}
 							//Call the function with channel number as its parameter
 							else
@@ -341,21 +344,21 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 								if(CicState[nCic].wRecDirection == CALL_IN_RECORD)
 								{
 									if(SsmStopRecToFile(CicState[nCic].nCallInCh) == -1)
-										MessageBox("Fail to call SsmStopRecToFile");
+										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopRecToFile"));
 								}
 								else if(CicState[nCic].wRecDirection == CALL_OUT_RECORD)
 								{
 									if(SsmStopRecToFile(CicState[nCic].nCallOutCh) == -1)
-										MessageBox("Fail to call SsmStopRecToFile");
+										LOG4CPLUS_ERROR(log,_T("Fail to call SsmStopRecToFile"));
 								}
 								else
 								{
 									if(SsmSetRecMixer(CicState[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
-										MessageBox("Fail to call SsmSetRecMixer");
+										LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetRecMixer"));
 									if(SsmStopLinkFrom(CicState[nCic].nCallOutCh, CicState[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
-										MessageBox("Fail to call SsmStopLinkFrom");
+										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopLinkFrom"));
 									if(SsmStopRecToFile(CicState[nCic].nCallInCh) == -1)		//Stop recording
-										MessageBox("Fail to call SsmStopRecToFile");
+										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopRecToFile"));
 								}
 							}
 						}
@@ -379,9 +382,11 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						CicState[nCic].nCicState = CIRCUIT_RINGING;
 						
 						if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
-							MessageBox("Fail to call SpyGetCallerId");
+							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
+						CicState[nCic].szCallerId.ReleaseBuffer();
 						if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)//Get called party number
-							MessageBox("Fail to call SpyGetCalleeId");
+							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCalleeId"));
+						CicState[nCic].szCalleeId.ReleaseBuffer();
 					}
 					break;			
 				//Talking
@@ -390,14 +395,14 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if(CicState[nCic].nCicState == CIRCUIT_RCV_PHONUM)
 						{
 							if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)
-								MessageBox("Fail to call SpyGetCallerId");
+								LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
 							if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)
-								MessageBox("Fail to call SpyGetCalleeId");
+								LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCalleeId"));
 						}
 						if((CicState[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
-							MessageBox("Fail to call SpyGetCallInCh");
+							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallInCh"));
 						if((CicState[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
-							MessageBox("Fail to call SpyGetCallOutCh");
+							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallOutCh"));
 						CicState[nCic].nCicState = CIRCUIT_TALKING;
 
 						//Start recording
@@ -412,28 +417,28 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 						{
 							if(SpyRecToFile(nCic, CicState[nCic].wRecDirection, szTemp, -1, 0L, -1, -1, 0) == -1)
-								MessageBox("Fail to call SpyRecToFile");
+								LOG4CPLUS_ERROR(log,_T("Fail to call SpyRecToFile"));
 						}
 						else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
 						{
 							if(CicState[nCic].wRecDirection == CALL_IN_RECORD)
 							{
 								if(SsmRecToFile(CicState[nCic].nCallInCh, szTemp, -1, 0L, -1, -1, 0) == -1)
-									MessageBox("Fail to call SsmRecToFile");
+									LOG4CPLUS_ERROR(log,_T("Fail to call SsmRecToFile"));
 							}
 							else if(CicState[nCic].wRecDirection == CALL_OUT_RECORD)
 							{
 								if(SsmRecToFile(CicState[nCic].nCallOutCh, szTemp, -1, 0L, -1, -1, 0) == -1)
-									MessageBox("Fail to call SsmRecToFile");
+									LOG4CPLUS_ERROR(log, _T("Fail to call SsmRecToFile"));
 							}
 							else
 							{
 								if(SsmLinkFrom(CicState[nCic].nCallOutCh, CicState[nCic].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
-									MessageBox("Fail to call SsmLinkFrom");
+									LOG4CPLUS_ERROR(log,_T("Fail to call SsmLinkFrom"));
 								if(SsmSetRecMixer(CicState[nCic].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
-									MessageBox("Fail to call SsmSetRecMixer");
+									LOG4CPLUS_ERROR(log,_T("Fail to call SsmSetRecMixer"));
 								if(SsmRecToFile(CicState[nCic].nCallInCh, szTemp, -1, 0L, -1, -1, 0) == -1)//Recording
-									MessageBox("Fail to call SsmRecToFile");
+									LOG4CPLUS_ERROR(log,_T("Fail to call SsmRecToFile"));
 							}
 						}
 					}
@@ -450,7 +455,7 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			//Switching from channel number to circuit number
  			if((nCic = SpyChToCic(nCh)) == -1)
 			{
-				MessageBox("Fail to call SpyChToCic");
+				LOG4CPLUS_ERROR(log,_T("Fail to call SpyChToCic"));
 			}
 			if(nCic != -1)
 			{
@@ -542,7 +547,7 @@ void CRecorder_DTPDlg::OnDestroy()
 	// TODO: Add your message handler code here
 	//Close board driver
 	if(SsmCloseCti() == -1)
-		MessageBox("Fail to call SsmCloseCti");
+		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
 }
 
 

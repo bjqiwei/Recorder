@@ -1,11 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Recorder_DTP", "DTP_Event_VC.vcxproj", "{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Recorder_DTP", "DTP_Event_VC.vcxproj", "{6DDD902F-A986-E902-BEF0-92F1A2378750}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "log4cplusS", "log4cplus-1.1.3-rc2\msvc10\log4cplusS.vcxproj", "{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}"
 EndProject
 Global
+	GlobalSection(DPCodeReviewSolutionGUID) = preSolution
+		DPCodeReviewSolutionGUID = {00000000-0000-0000-0000-000000000000}
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
@@ -13,12 +16,12 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Debug|Win32.Build.0 = Debug|Win32
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Debug|x64.ActiveCfg = Debug|Win32
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Release|Win32.ActiveCfg = Release|Win32
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Release|Win32.Build.0 = Release|Win32
-		{3B03495C-C8BE-79C4-81AA-92F5CFCF216F}.Release|x64.ActiveCfg = Release|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Debug|Win32.Build.0 = Debug|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Debug|x64.ActiveCfg = Debug|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Release|Win32.ActiveCfg = Release|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Release|Win32.Build.0 = Release|Win32
+		{6DDD902F-A986-E902-BEF0-92F1A2378750}.Release|x64.ActiveCfg = Release|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|Win32.ActiveCfg = Debug|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|Win32.Build.0 = Debug|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|x64.ActiveCfg = Debug|x64

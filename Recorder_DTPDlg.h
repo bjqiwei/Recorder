@@ -52,6 +52,7 @@ class CRecorder_DTPDlg : public CDialog
 // Construction
 public:
 	CRecorder_DTPDlg(CWnd* pParent = NULL);	// standard constructor
+	~CRecorder_DTPDlg();
 
 // Dialog Data
 	//{{AFX_DATA(CDTP_Event_VCDlg)
