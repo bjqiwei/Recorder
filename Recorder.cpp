@@ -2,8 +2,8 @@
 //
 
 #include "stdafx.h"
-#include "Recorder_DTP.h"
-#include "Recorder_DTPDlg.h"
+#include "Recorder.h"
+#include "RecorderDlg.h"
 #include <log4cplus/logger.h>
 #include <log4cplus/fileappender.h>
 
@@ -16,7 +16,7 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp
 
-BEGIN_MESSAGE_MAP(CRecorder_DTPApp, CWinApp)
+BEGIN_MESSAGE_MAP(CRecorder_App, CWinApp)
 	//{{AFX_MSG_MAP(CDTP_Event_VCApp)
 		// NOTE - the ClassWizard will add and remove mapping macros here.
 		//    DO NOT EDIT what you see in these blocks of generated code!
@@ -27,7 +27,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp construction
 
-CRecorder_DTPApp::CRecorder_DTPApp()
+CRecorder_App::CRecorder_App()
 {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
@@ -36,12 +36,12 @@ CRecorder_DTPApp::CRecorder_DTPApp()
 /////////////////////////////////////////////////////////////////////////////
 // The one and only CDTP_Event_VCApp object
 
-CRecorder_DTPApp theApp;
+CRecorder_App theApp;
 TCHAR szPath[MAX_PATH];
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCApp initialization
 
-BOOL CRecorder_DTPApp::InitInstance()
+BOOL CRecorder_App::InitInstance()
 {
 	AfxEnableControlContainer();
 
@@ -75,7 +75,7 @@ BOOL CRecorder_DTPApp::InitInstance()
 	root.addAppender(_append);
 	root.setLogLevel(log4cplus::ALL_LOG_LEVEL);
 
-	CRecorder_DTPDlg dlg;
+	CRecorder_Dlg dlg;
 	m_pMainWnd = &dlg;
 	int nResponse = dlg.DoModal();
 	if (nResponse == IDOK)

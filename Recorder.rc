@@ -48,7 +48,7 @@ BEGIN
     "LANGUAGE 4, 2\r\n"
     "#pragma code_page(936)\r\n"
     "#endif //_WIN32\r\n"
-    "#include ""res\\Recorder_DTP.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""res\\Recorder.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
     "#include ""l.chs\\afxres.rc""          // Standard components\r\n"
     "#endif\r\n"
     "\0"
@@ -64,7 +64,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "res\\Recorder_DTP.ico"
+IDR_MAINFRAME           ICON                    "res\\Recorder.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -116,12 +116,12 @@ BEGIN
     BEGIN
         BLOCK "080404B0"
         BEGIN
-            VALUE "FileDescription", "DTP_Event_VC Microsoft 基础类应用程序"
+            VALUE "FileDescription", "Recorder_VC"
             VALUE "FileVersion", "1, 0, 0, 1"
-            VALUE "InternalName", "DTP_Event_VC"
+            VALUE "InternalName", "Recorder_VC"
             VALUE "LegalCopyright", "版权所有 (C) 2006"
-            VALUE "OriginalFilename", "DTP_Event_VC.EXE"
-            VALUE "ProductName", "DTP_Event_VC 应用程序"
+            VALUE "OriginalFilename", "Recorder_VC.EXE"
+            VALUE "ProductName", "Recorder_VC 应用程序"
             VALUE "ProductVersion", "1, 0, 0, 1"
         END
     END
@@ -170,7 +170,7 @@ END
 LANGUAGE 4, 2
 #pragma code_page(936)
 #endif //_WIN32
-#include "res\Recorder_DTP.rc2"  // non-Microsoft Visual C++ edited resources
+#include "res\Recorder.rc2"  // non-Microsoft Visual C++ edited resources
 #include "l.chs\afxres.rc"          // Standard components
 #endif
 

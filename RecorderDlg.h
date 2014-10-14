@@ -47,12 +47,12 @@ typedef struct tagCIC_STRUCT
 }CIC_STRUCT;
 
 
-class CRecorder_DTPDlg : public CDialog
+class CRecorder_Dlg : public CDialog
 {
 // Construction
 public:
-	CRecorder_DTPDlg(CWnd* pParent = NULL);	// standard constructor
-	~CRecorder_DTPDlg();
+	CRecorder_Dlg(CWnd* pParent = NULL);	// standard constructor
+	~CRecorder_Dlg();
 
 // Dialog Data
 	//{{AFX_DATA(CDTP_Event_VCDlg)
@@ -91,7 +91,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 private:
 	CIC_STRUCT CicState[MAX_CIC];	//Monitored circuits
-	int nMaxCic;					//Maximum number of the monitored circuits
+	int nMaxCh;					//Maximum number of the monitored circuits
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl();	//Update list

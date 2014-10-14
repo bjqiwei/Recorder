@@ -2,8 +2,8 @@
 //
 
 #include "stdafx.h"
-#include "Recorder_DTP.h"
-#include "Recorder_DTPDlg.h"
+#include "Recorder.h"
+#include "RecorderDlg.h"
 #include <log4cplus/loggingmacros.h>
 
 #ifdef _DEBUG
@@ -12,7 +12,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 #define  ColumnNumber 9
-#define  ChannelWidth 40
+#define  ChannelWidth 60
 #define  ChannleStatusWidth 100
 #define	 CallingWidth	100
 #define  CalleeWidth	100
@@ -34,8 +34,8 @@ static LPTSTR	StateName[] = {"Idle","Receiving Phone number","Ringing","Talking"
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
 
-CRecorder_DTPDlg::CRecorder_DTPDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CRecorder_DTPDlg::IDD, pParent)
+CRecorder_Dlg::CRecorder_Dlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CRecorder_Dlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CDTP_Event_VCDlg)
 	m_nRecFormat = 2;
@@ -44,14 +44,12 @@ CRecorder_DTPDlg::CRecorder_DTPDlg(CWnd* pParent /*=NULL*/)
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
-	LOG4CPLUS_INFO(log,_T("Application start..."));
 }
-CRecorder_DTPDlg::~CRecorder_DTPDlg()
+CRecorder_Dlg::~CRecorder_Dlg()
 {
-	LOG4CPLUS_INFO(log,_T("Application exit..."));
 }
 
-void CRecorder_DTPDlg::DoDataExchange(CDataExchange* pDX)
+void CRecorder_Dlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
@@ -62,7 +60,7 @@ void CRecorder_DTPDlg::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 }
 
-BEGIN_MESSAGE_MAP(CRecorder_DTPDlg, CDialog)
+BEGIN_MESSAGE_MAP(CRecorder_Dlg, CDialog)
 	//{{AFX_MSG_MAP(CDTP_Event_VCDlg)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
@@ -80,7 +78,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg message handlers
 
-BOOL CRecorder_DTPDlg::OnInitDialog()
+BOOL CRecorder_Dlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
@@ -112,7 +110,7 @@ BOOL CRecorder_DTPDlg::OnInitDialog()
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
-void CRecorder_DTPDlg::OnSysCommand(UINT nID, LPARAM lParam)
+void CRecorder_Dlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
 	CDialog::OnSysCommand(nID, lParam);
 }
@@ -121,7 +119,7 @@ void CRecorder_DTPDlg::OnSysCommand(UINT nID, LPARAM lParam)
 //  to draw the icon.  For MFC applications using the document/view model,
 //  this is automatically done for you by the framework.
 
-void CRecorder_DTPDlg::OnPaint() 
+void CRecorder_Dlg::OnPaint() 
 {
 	if (IsIconic())
 	{
@@ -148,13 +146,13 @@ void CRecorder_DTPDlg::OnPaint()
 
 // The system calls this to obtain the cursor to display while the user drags
 //  the minimized window.
-HCURSOR CRecorder_DTPDlg::OnQueryDragIcon()
+HCURSOR CRecorder_Dlg::OnQueryDragIcon()
 {
 	return (HCURSOR) m_hIcon;
 }
 
 //Initialize board
-BOOL CRecorder_DTPDlg::InitCtiBoard()
+BOOL CRecorder_Dlg::InitCtiBoard()
 {
 	char szCurPath[MAX_PATH];		//Current path
 	char szShIndex[MAX_PATH];		//path to ShIndex.ini
@@ -166,6 +164,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 	strcat(szShIndex, "\\ShIndex.ini");
 	strcat(szShConfig, "\\ShConfig.ini");
 	
+	LOG4CPLUS_INFO(log,_T("Application start..."));
 	//load configuration file and initialize system
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
@@ -185,14 +184,15 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 		return FALSE;
 	}
 	//Get the maximum number of the monitored circuits
-	nMaxCic = SpyGetMaxCic();	  
-	if(nMaxCic == -1)
+	//nMaxCic = SpyGetMaxCic();
+	nMaxCh = SsmGetMaxCh();
+	if(nMaxCh == -1)
 	{
 		LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
 	}
 
 	CString str;
-	for(int i = 0; i < nMaxCic; i++)
+	for(int i = 0; i < nMaxCh; i++)
 	{
 		CicState[i].nCicState = CIRCUIT_IDLE;
 		CicState[i].wRecDirection = MIX_RECORD;	    //mix-record
@@ -207,7 +207,7 @@ BOOL CRecorder_DTPDlg::InitCtiBoard()
 }
 
 //Initialize list
-void CRecorder_DTPDlg::InitCircuitListCtrl()
+void CRecorder_Dlg::InitCircuitListCtrl()
 {
 	
 	/*m_CicList.SetBkColor(RGB(0,0,0));
@@ -231,7 +231,7 @@ void CRecorder_DTPDlg::InitCircuitListCtrl()
 	}
 	
 	CString str;
-	for(int i = 0; i < nMaxCic; i++)
+	for(int i = 0; i < nMaxCh; i++)
 	{
 		str.Format("%d",i);
 		m_CicList.InsertItem(i, str);
@@ -239,7 +239,7 @@ void CRecorder_DTPDlg::InitCircuitListCtrl()
 }
 
 //Update list
-void CRecorder_DTPDlg::UpdateCircuitListCtrl()
+void CRecorder_Dlg::UpdateCircuitListCtrl()
 {
 	CString strNewData;
 	CString strOldData;
@@ -302,7 +302,7 @@ void CRecorder_DTPDlg::UpdateCircuitListCtrl()
 }
 
 
-LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
+LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
 {
 	// TODO: Add your specialized code here and/or call the base class
 	int nCic;
@@ -480,7 +480,7 @@ LRESULT CRecorder_DTPDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	return CDialog::WindowProc(message, wParam, lParam);
 }
 //Incoming call recording
-void CRecorder_DTPDlg::OnRadioCallIn() 
+void CRecorder_Dlg::OnRadioCallIn() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -493,7 +493,7 @@ void CRecorder_DTPDlg::OnRadioCallIn()
 	CicState[nCurLine].wRecDirection = CALL_IN_RECORD;
 }
 //Outgoing call recording
-void CRecorder_DTPDlg::OnRadioCallOut() 
+void CRecorder_Dlg::OnRadioCallOut() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -506,7 +506,7 @@ void CRecorder_DTPDlg::OnRadioCallOut()
 	CicState[nCurLine].wRecDirection = CALL_OUT_RECORD;	
 }
 //Mix-record
-void CRecorder_DTPDlg::OnRadioMix() 
+void CRecorder_Dlg::OnRadioMix() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -520,7 +520,7 @@ void CRecorder_DTPDlg::OnRadioMix()
 }
 
 
-void CRecorder_DTPDlg::OnSelchangeComboCic() 
+void CRecorder_Dlg::OnSelchangeComboCic() 
 {
 	// TODO: Add your control notification handler code here
 	int nCurLine;
@@ -540,25 +540,26 @@ void CRecorder_DTPDlg::OnSelchangeComboCic()
 }
 
 
-void CRecorder_DTPDlg::OnDestroy() 
+void CRecorder_Dlg::OnDestroy() 
 {
 	CDialog::OnDestroy();
 	
 	// TODO: Add your message handler code here
 	//Close board driver
+	LOG4CPLUS_INFO(log,_T("Application exit..."));
 	if(SsmCloseCti() == -1)
 		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
 }
 
 
-void CRecorder_DTPDlg::OnRadioCircuit() 
+void CRecorder_Dlg::OnRadioCircuit() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData(TRUE);	
 }
 
 
-void CRecorder_DTPDlg::OnRadioCh() 
+void CRecorder_Dlg::OnRadioCh() 
 {
 	// TODO: Add your control notification handler code here
 	UpdateData(TRUE);

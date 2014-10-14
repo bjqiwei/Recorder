@@ -18,10 +18,10 @@
     <ClCompile Include="StdAfx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Recorder_DTP.cpp">
+    <ClCompile Include="RecorderDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Recorder_DTPDlg.cpp">
+    <ClCompile Include="Recorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,23 +32,23 @@
     <ClInclude Include="StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Recorder_DTP.h">
+    <ClInclude Include="Recorder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Recorder_DTPDlg.h">
+    <ClInclude Include="RecorderDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="res\Recorder_DTP.ico">
+    <CustomBuild Include="res\Recorder.rc2">
       <Filter>Resource Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="res\Recorder_DTP.rc2">
+    <CustomBuild Include="res\Recorder.ico">
       <Filter>Resource Files</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Recorder_DTP.rc">
+    <ResourceCompile Include="Recorder.rc">
       <Filter>Source Files</Filter>
     </ResourceCompile>
   </ItemGroup>
