@@ -33,7 +33,8 @@ enum RECORD_DIRECTION
 
 typedef struct tagCIC_STRUCT
 {
-	int  nCicState;				//State of monitored circuits
+	int  nState;				//State of monitored circuits
+	CString szState;
 	CString szCallerId;		//Calling party number
 	CString szCalleeId;		//Called party number
 	CString szCallInDtmf;		//DTMF received on the incoming channel
@@ -94,7 +95,7 @@ private:
 	int nMaxCh;					//Maximum number of the monitored circuits
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
-	void UpdateCircuitListCtrl();	//Update list
+	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
 };
 
 //{{AFX_INSERT_LOCATION}}

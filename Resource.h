@@ -1,10 +1,8 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by Recorder_DTP.rc
+// Used by Recorder.rc
 //
-//#define IDM_ABOUTBOX                    0x0010
-//#define IDS_ABOUTBOX                    101
-#define IDD_RECORDER_DTP_VC_DIALOG      102
+#define IDD_RECORDER_VC_DIALOG          102
 #define IDR_MAINFRAME                   128
 #define IDC_LIST_DTP                    1001
 #define IDC_COMBO_CIC                   1002

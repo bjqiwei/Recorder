@@ -11,9 +11,9 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-#define  ColumnNumber 9
+
 #define  ChannelWidth 60
-#define  ChannleStatusWidth 100
+#define  StatusWidth 100
 #define	 CallingWidth	100
 #define  CalleeWidth	100
 #define  IncomingDTMFWidth 120
@@ -21,12 +21,23 @@ static char THIS_FILE[] = __FILE__;
 #define  RecordTimesWidth	100
 #define	 StartTimeWidth		100
 #define  FileNameWidth		400
+enum{
+	Channel = 0,
+	ChState,
+	ChCaller,
+	ChCallee,
+	ChInDTMF,
+	ChOutDTMF,
+	ChTimes,
+	ChStartTime,
+	ChFileName,
+};
+#define  ColumnNumber (ChFileName + 1)
+static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 "呼入DTMF",	   "外呼DTMF",		 "录音次数",	  "开始时间",	 "录音文件名称"};
+static LPTSTR ColumnName[ColumnNumber] =   {"Cic",			"CicState",	"CallerId",		"CalleeId",	 "InComingCh:DTMF","OutgoingCh:DTMF","Times",		  "StartTime",   "FileName"};
+static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, IncomingDTMFWidth, OutDTMFWidth,	 RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
-static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",			"主叫号码",		"被叫号码",	 "呼入DTMF",	   "外呼DTMF",		 "录音次数",	  "开始时间",	 "录音文件名称"};
-static LPTSTR ColumnName[ColumnNumber] =   {"Cic",			"CicState",			"CallerId",		"CalleeId",	 "InComingCh:DTMF","OutgoingCh:DTMF","Times",		  "StartTime",   "FileName"};
-static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	ChannleStatusWidth, CallingWidth,	CalleeWidth, IncomingDTMFWidth, OutDTMFWidth,	 RecordTimesWidth,StartTimeWidth,FileNameWidth};
-
-static LPTSTR	StateName[] = {"Idle","Receiving Phone number","Ringing","Talking",};		
+static LPTSTR	StateName[] = {"空闲","收号","振铃","通话",};		
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
@@ -194,7 +205,7 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 	CString str;
 	for(int i = 0; i < nMaxCh; i++)
 	{
-		CicState[i].nCicState = CIRCUIT_IDLE;
+		CicState[i].nState = CIRCUIT_IDLE;
 		CicState[i].wRecDirection = MIX_RECORD;	    //mix-record
 		CicState[i].nCallInCh = -1;	
 		CicState[i].nCallOutCh = -1;
@@ -210,9 +221,9 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 void CRecorder_Dlg::InitCircuitListCtrl()
 {
 	
-	/*m_CicList.SetBkColor(RGB(0,0,0));
+	m_CicList.SetBkColor(RGB(0,0,0));
 	m_CicList.SetTextColor(RGB(0,255,0));
-	m_CicList.SetTextBkColor(RGB(0,0,0));*/
+	m_CicList.SetTextBkColor(RGB(0,0,0));
 
 	DWORD dwExtendedStyle = m_CicList.GetExtendedStyle();
 	dwExtendedStyle |= LVS_EX_FULLROWSELECT;
@@ -239,77 +250,30 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 }
 
 //Update list
-void CRecorder_Dlg::UpdateCircuitListCtrl()
+void CRecorder_Dlg::UpdateCircuitListCtrl(unsigned int nIndex)
 {
 	CString strNewData;
-	CString strOldData;
-
-	for(int nItem = 0; nItem < m_CicList.GetItemCount(); nItem++)
-	{
-		//Display the state of the monitored circuit
-		
-		strNewData = StateName[CicState[nItem].nCicState];
-		strOldData = m_CicList.GetItemText(nItem, 1);
-		if(strOldData != strNewData)
-		{
-			m_CicList.SetItemText(nItem, 1, strNewData);
-		}
-		
-		//Display calling party number
-		strOldData = m_CicList.GetItemText(nItem, 2);
-		if(strOldData != CicState[nItem].szCallerId)
-		{
-			m_CicList.SetItemText(nItem, 2, CicState[nItem].szCallerId);
-		}		
-		//Display called party number
-		strOldData = m_CicList.GetItemText(nItem, 3);
-		if(strOldData != CicState[nItem].szCalleeId)
-		{
-			m_CicList.SetItemText(nItem, 3, CicState[nItem].szCalleeId);
-		}
-		//CDisplay incoming channel and received DTMFs in the channel
-		strNewData.Format("%d:%s", CicState[nItem].nCallInCh, CicState[nItem].szCallInDtmf);
-		strOldData = m_CicList.GetItemText(nItem, 4);
-		if(strOldData != strNewData)
-		{
-			m_CicList.SetItemText(nItem, 4, strNewData);
-		}
-		//Display outgoing channel and received DTMFs in the channel
-		strNewData.Format("%d:%s", CicState[nItem].nCallOutCh, CicState[nItem].szCallOutDtmf);
-		strOldData = m_CicList.GetItemText(nItem, 5);
-		if(strOldData != strNewData)
-		{
-			m_CicList.SetItemText(nItem, 5, strNewData);
-		}
+	m_CicList.SetItemText(nIndex, ChState, CicState[nIndex].szState);
+	m_CicList.SetItemText(nIndex, ChCaller, CicState[nIndex].szCallerId);
+	m_CicList.SetItemText(nIndex, ChCallee, CicState[nIndex].szCalleeId);
+	m_CicList.SetItemText(nIndex, ChInDTMF, CicState[nIndex].szCallInDtmf);
+	m_CicList.SetItemText(nIndex, ChOutDTMF, CicState[nIndex].szCallOutDtmf);
+	strNewData.Format("%d", CicState[nIndex].nRecordTimes);
+	m_CicList.SetItemText(nIndex, ChTimes, strNewData);
+	m_CicList.SetItemText(nIndex, ChStartTime , CicState[nIndex].tStartTime.Format("YYYY-MM-DD HH:MS:SS"));
+	m_CicList.SetItemText(nIndex, ChFileName, CicState[nIndex].szFileName);
 	
-		strNewData.Format("%d", CicState[nItem].nRecordTimes);
-		strOldData = m_CicList.GetItemText(nItem, 6);
-		if(strOldData != strNewData)
-		{
-			m_CicList.SetItemText(nItem, 6, strNewData);
-		}
-
-		if (CicState[nItem].nCicState == CIRCUIT_TALKING)
-		{
-			m_CicList.SetItemText(nItem, 7, CicState[nItem].tStartTime.Format("YYYY-MM-DD HH:MS:SS"));
-		}
-
-		if (CicState[nItem].nCicState == CIRCUIT_TALKING)
-		{
-			m_CicList.SetItemText(nItem, 8, CicState[nItem].szFileName);
-		}
-	}
 }
 
 
 LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
 {
 	// TODO: Add your specialized code here and/or call the base class
-	int nCic;
-	int nCh;
-	char cNewDtmf;
-	int nEventCode;
-	int nNewState;
+	static int nCic;
+	static int nCh;
+	static char cNewDtmf;
+	static int nEventCode;
+	static int nNewState;
 
 	//Adopt windows message mechanism
 	//	   windows message code：event code + 0x7000(WM_USER)
@@ -329,7 +293,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				//Idle state
 				case S_SPY_STANDBY:
 					{
-						if(CicState[nCic].nCicState == CIRCUIT_TALKING)
+						if(CicState[nCic].nState == CIRCUIT_TALKING)
 						{	
 							//Call the function with circuit number as its parameter
 							if(m_nCallFnMode == 0)				
@@ -362,7 +326,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 								}
 							}
 						}
-						CicState[nCic].nCicState = CIRCUIT_IDLE;
+						CicState[nCic].nState = CIRCUIT_IDLE;
 						CicState[nCic].szCallInDtmf.Empty();
 						CicState[nCic].szCallOutDtmf.Empty();
 					}
@@ -370,16 +334,16 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				//Receiving phone number
 				case S_SPY_RCVPHONUM:
 					{
-						if(CicState[nCic].nCicState == CIRCUIT_IDLE)
+						if(CicState[nCic].nState == CIRCUIT_IDLE)
 						{
-							CicState[nCic].nCicState = CIRCUIT_RCV_PHONUM;
+							CicState[nCic].nState = CIRCUIT_RCV_PHONUM;
 						}
 					}
 					break;			
 				//Ringing
 				case S_SPY_RINGING:
 					{
-						CicState[nCic].nCicState = CIRCUIT_RINGING;
+						CicState[nCic].nState = CIRCUIT_RINGING;
 						
 						if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
 							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
@@ -392,7 +356,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				//Talking
 				case S_SPY_TALKING:
 					{
-						if(CicState[nCic].nCicState == CIRCUIT_RCV_PHONUM)
+						if(CicState[nCic].nState == CIRCUIT_RCV_PHONUM)
 						{
 							if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)
 								LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
@@ -403,7 +367,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallInCh"));
 						if((CicState[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
 							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallOutCh"));
-						CicState[nCic].nCicState = CIRCUIT_TALKING;
+						CicState[nCic].nState = CIRCUIT_TALKING;
 
 						//Start recording
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
@@ -446,7 +410,8 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				default:
 					break;
 				}
-			}		
+			}
+			UpdateCircuitListCtrl(nCic);
 		}
 		//Event generated by the driver when DTMF is received
 		else if(nEventCode == E_CHG_RcvDTMF)
@@ -459,7 +424,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			if(nCic != -1)
 			{
-				if(CicState[nCic].nCicState == CIRCUIT_TALKING)
+				if(CicState[nCic].nState == CIRCUIT_TALKING)
 				{
 					cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
 					if(nCh == CicState[nCic].nCallInCh)
@@ -472,9 +437,11 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					}
 				}
 			}
+			UpdateCircuitListCtrl(nCic);
+		}else{
+			LOG4CPLUS_WARN(log, "un resolve Event:" << nEventCode);
 		}
 		
-		UpdateCircuitListCtrl();
 	}
 
 	return CDialog::WindowProc(message, wParam, lParam);
