@@ -5,6 +5,7 @@
 #include "Recorder.h"
 #include "RecorderDlg.h"
 #include <log4cplus/loggingmacros.h>
+#include <iostream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -16,8 +17,8 @@ static char THIS_FILE[] = __FILE__;
 #define  StatusWidth 100
 #define	 CallingWidth	100
 #define  CalleeWidth	100
-#define  IncomingDTMFWidth 120
-#define  OutDTMFWidth	120
+#define  DTMFWidth 120
+//#define  OutDTMFWidth	120
 #define  RecordTimesWidth	100
 #define	 StartTimeWidth		100
 #define  FileNameWidth		400
@@ -26,18 +27,18 @@ enum{
 	ChState,
 	ChCaller,
 	ChCallee,
-	ChInDTMF,
-	ChOutDTMF,
+	//ChInDTMF,
+	ChDTMF,
 	ChTimes,
 	ChStartTime,
 	ChFileName,
 };
 #define  ColumnNumber (ChFileName + 1)
-static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 "呼入DTMF",	   "外呼DTMF",		 "录音次数",	  "开始时间",	 "录音文件名称"};
-static LPTSTR ColumnName[ColumnNumber] =   {"Cic",			"CicState",	"CallerId",		"CalleeId",	 "InComingCh:DTMF","OutgoingCh:DTMF","Times",		  "StartTime",   "FileName"};
-static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, IncomingDTMFWidth, OutDTMFWidth,	 RecordTimesWidth,StartTimeWidth,FileNameWidth};
+static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 "DTMF",	"录音次数",		"开始时间",	 "录音文件名称"};
+static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 "DTMF",    "Times",		"StartTime",   "FileName"};
+static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth,  DTMFWidth,RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
-static LPTSTR	StateName[] = {"空闲","收号","振铃","通话",};		
+static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};		
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
@@ -46,7 +47,7 @@ static LPTSTR	StateName[] = {"空闲","收号","振铃","通话",};
 // CDTP_Event_VCDlg dialog
 
 CRecorder_Dlg::CRecorder_Dlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CRecorder_Dlg::IDD, pParent)
+	: CDialog(CRecorder_Dlg::IDD, pParent),nMaxCh(0)
 {
 	//{{AFX_DATA_INIT(CDTP_Event_VCDlg)
 	m_nRecFormat = 2;
@@ -64,8 +65,8 @@ void CRecorder_Dlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
-	DDX_Control(pDX, IDC_LIST_DTP, m_CicList);
-	DDX_Control(pDX, IDC_COMBO_CIC, m_cmbCic);
+	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
+	DDX_Control(pDX, IDC_COMBO_CIC, m_cmbCh);
 	DDX_Radio(pDX, IDC_RADIO_CALL_IN, m_nRecFormat);
 	DDX_Radio(pDX, IDC_RADIO_CIRCUIT, m_nCallFnMode);
 	//}}AFX_DATA_MAP
@@ -165,22 +166,33 @@ HCURSOR CRecorder_Dlg::OnQueryDragIcon()
 //Initialize board
 BOOL CRecorder_Dlg::InitCtiBoard()
 {
-	char szCurPath[MAX_PATH];		//Current path
-	char szShIndex[MAX_PATH];		//path to ShIndex.ini
-	char szShConfig[MAX_PATH];		//path to ShConfig.ini
+	CString szCurPath;				//Current path
+	CString szShIndex;					//path to ShIndex.ini
+	CString szShConfig;				//path to ShConfig.ini
+
+	CRegKey shKey;
+	LONG lResult = shKey.Open(HKEY_LOCAL_MACHINE,"SoftWare\\ShCti");
+	if (lResult != ERROR_SUCCESS)
+	{
+		LOG4CPLUS_ERROR(log, _T("Open ShCti RegKey failed."));
+	}
+	ULONG dwLen;
+	shKey.QueryStringValue("AppPath", szCurPath.GetBuffer(256),&dwLen);
+	szCurPath.ReleaseBuffer();
+	szShIndex = szCurPath;
+	szShConfig = szCurPath;
+	
 	CString CErrMsg;			    //error message
-	GetCurrentDirectory(MAX_PATH, szCurPath);
-	strcpy(szShIndex, szCurPath);
-	strcpy(szShConfig, szCurPath);
-	strcat(szShIndex, "\\ShIndex.ini");
-	strcat(szShConfig, "\\ShConfig.ini");
+	
+	szShIndex.Append("ShIndex.ini");
+	szShConfig.Append("ShConfig.ini");
 	
 	LOG4CPLUS_INFO(log,_T("Application start..."));
 	//load configuration file and initialize system
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-		LOG4CPLUS_ERROR(log, (LPCSTR)CErrMsg);
+		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
@@ -190,28 +202,33 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message	
-		LOG4CPLUS_ERROR(log, (LPCSTR)CErrMsg);
+		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
+	
+	
 	//Get the maximum number of the monitored circuits
-	//nMaxCic = SpyGetMaxCic();
-	nMaxCh = SsmGetMaxCh();
-	if(nMaxCh == -1)
-	{
-		LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
+	nMaxCh = SpyGetMaxCic();
+	if(nMaxCh <= 0){
+		nMaxCh = SsmGetMaxCh();
+		if(nMaxCh == -1)
+		{
+			LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
+		}
 	}
-
 	CString str;
 	for(int i = 0; i < nMaxCh; i++)
 	{
-		CicState[i].nState = CIRCUIT_IDLE;
-		CicState[i].wRecDirection = MIX_RECORD;	    //mix-record
-		CicState[i].nCallInCh = -1;	
-		CicState[i].nCallOutCh = -1;
-		CicState[i].nRecordTimes = 0;
+		ChMap[i].nState = CIRCUIT_IDLE;
+		ChMap[i].szState = StateName[CIRCUIT_IDLE];
+		ChMap[i].wRecDirection = MIX_RECORD;	    //mix-record
+		ChMap[i].nCallInCh = -1;	
+		ChMap[i].nCallOutCh = -1;
+		ChMap[i].nRecordTimes = 0;
+		ChMap[i].tStartTime = CTime::GetCurrentTime();
 		str.Format("%d", i);
-		m_cmbCic.InsertString(-1, str);
+		m_cmbCh.InsertString(-1, str);
 	}
 	
 	return TRUE;
@@ -221,14 +238,15 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 void CRecorder_Dlg::InitCircuitListCtrl()
 {
 	
-	m_CicList.SetBkColor(RGB(0,0,0));
-	m_CicList.SetTextColor(RGB(0,255,0));
-	m_CicList.SetTextBkColor(RGB(0,0,0));
+	//m_CicList.SetBkColor(RGB(0,0,0));
+	//m_CicList.SetTextColor(RGB(0,255,0));
+	m_ChList.SetTextBkColor(RGB(255,255,204));
+	m_ChList.SetOutlineColor(RGB(0,0,0));
 
-	DWORD dwExtendedStyle = m_CicList.GetExtendedStyle();
+	DWORD dwExtendedStyle = m_ChList.GetExtendedStyle();
 	dwExtendedStyle |= LVS_EX_FULLROWSELECT;
 	dwExtendedStyle |= LVS_EX_GRIDLINES; 
-	m_CicList.SetExtendedStyle(dwExtendedStyle);
+	m_ChList.SetExtendedStyle(dwExtendedStyle);
 
 	LV_COLUMN lvc;
 	lvc.mask =  LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM ;
@@ -238,14 +256,14 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 		lvc.iSubItem = i;
 		lvc.pszText = ColumnNameCh[i];
 		lvc.cx = ColumnWidth[i];
-		m_CicList.InsertColumn(i, &lvc);
+		m_ChList.InsertColumn(i, &lvc);
 	}
 	
 	CString str;
 	for(int i = 0; i < nMaxCh; i++)
 	{
 		str.Format("%d",i);
-		m_CicList.InsertItem(i, str);
+		m_ChList.InsertItem(i, str);
 	}
 }
 
@@ -253,15 +271,15 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 void CRecorder_Dlg::UpdateCircuitListCtrl(unsigned int nIndex)
 {
 	CString strNewData;
-	m_CicList.SetItemText(nIndex, ChState, CicState[nIndex].szState);
-	m_CicList.SetItemText(nIndex, ChCaller, CicState[nIndex].szCallerId);
-	m_CicList.SetItemText(nIndex, ChCallee, CicState[nIndex].szCalleeId);
-	m_CicList.SetItemText(nIndex, ChInDTMF, CicState[nIndex].szCallInDtmf);
-	m_CicList.SetItemText(nIndex, ChOutDTMF, CicState[nIndex].szCallOutDtmf);
-	strNewData.Format("%d", CicState[nIndex].nRecordTimes);
-	m_CicList.SetItemText(nIndex, ChTimes, strNewData);
-	m_CicList.SetItemText(nIndex, ChStartTime , CicState[nIndex].tStartTime.Format("YYYY-MM-DD HH:MS:SS"));
-	m_CicList.SetItemText(nIndex, ChFileName, CicState[nIndex].szFileName);
+	m_ChList.SetItemText(nIndex, ChState, ChMap[nIndex].szState);
+	m_ChList.SetItemText(nIndex, ChCaller, ChMap[nIndex].szCallerId);
+	m_ChList.SetItemText(nIndex, ChCallee, ChMap[nIndex].szCalleeId);
+	m_ChList.SetItemText(nIndex, ChDTMF, ChMap[nIndex].szDtmf);
+	//m_CicList.SetItemText(nIndex, ChOutDTMF, CicState[nIndex].szCallOutDtmf);
+	strNewData.Format("%d", ChMap[nIndex].nRecordTimes);
+	m_ChList.SetItemText(nIndex, ChTimes, strNewData);
+	m_ChList.SetItemText(nIndex, ChStartTime , ChMap[nIndex].tStartTime.Format("%Y-%m-%d %H:%M:%S"));
+	m_ChList.SetItemText(nIndex, ChFileName, ChMap[nIndex].szFileName);
 	
 }
 
@@ -272,147 +290,206 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	static int nCic;
 	static int nCh;
 	static char cNewDtmf;
-	static int nEventCode;
-	static int nNewState;
+	static ULONG nEventCode;
+	static UINT nNewState;
 
 	//Adopt windows message mechanism
 	//	   windows message code：event code + 0x7000(WM_USER)
 	if(message > WM_USER)  
-	{		
+	{	
+		
 		nEventCode = message - WM_USER;	
-
+		LOG4CPLUS_DEBUG(log,"message:" << message << ",SanHui nEventCode:" << std::hex <<nEventCode);
+		
 		//Event notifying the state change of the monitored circuit
 		if(nEventCode == E_CHG_SpyState)	
 		{
+#pragma region E_CHG_SpyState
 			nCic = wParam;
+			LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " E_CHG_SpyState");
 	 		nNewState = (int)lParam & 0xFFFF;
-			if(nCic >= 0 && nCic < MAX_CIC)
+			
+			if(nCic >= 0 && nCic < MAX_CH)
 			{
 				switch(nNewState)
 				{
 				//Idle state
+#pragma region 空闲
 				case S_SPY_STANDBY:
+
 					{
-						if(CicState[nCic].nState == CIRCUIT_TALKING)
-						{	
+						LOG4CPLUS_DEBUG(log, "Ch:" << nCic <<  " State:S_SPY_STANDBY");
+						if(ChMap[nCic].nState == CIRCUIT_TALKING)
+						{
 							//Call the function with circuit number as its parameter
 							if(m_nCallFnMode == 0)				
 							{
 								//stop recording
 								if(SpyStopRecToFile(nCic) == -1)
-									LOG4CPLUS_ERROR(log, _T("Fail to call SpyStopRecToFile"));
+									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
 							}
 							//Call the function with channel number as its parameter
 							else
 							{
-								if(CicState[nCic].wRecDirection == CALL_IN_RECORD)
+								if(ChMap[nCic].wRecDirection == CALL_IN_RECORD)
 								{
-									if(SsmStopRecToFile(CicState[nCic].nCallInCh) == -1)
-										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopRecToFile"));
+									if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)
+										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
 								}
-								else if(CicState[nCic].wRecDirection == CALL_OUT_RECORD)
+								else if(ChMap[nCic].wRecDirection == CALL_OUT_RECORD)
 								{
-									if(SsmStopRecToFile(CicState[nCic].nCallOutCh) == -1)
-										LOG4CPLUS_ERROR(log,_T("Fail to call SsmStopRecToFile"));
+									if(SsmStopRecToFile(ChMap[nCic].nCallOutCh) == -1)
+										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
 								}
 								else
 								{
-									if(SsmSetRecMixer(CicState[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
-										LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetRecMixer"));
-									if(SsmStopLinkFrom(CicState[nCic].nCallOutCh, CicState[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
-										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopLinkFrom"));
-									if(SsmStopRecToFile(CicState[nCic].nCallInCh) == -1)		//Stop recording
-										LOG4CPLUS_ERROR(log, _T("Fail to call SsmStopRecToFile"));
+									if(SsmSetRecMixer(ChMap[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
+										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmSetRecMixer"));
+									if(SsmStopLinkFrom(ChMap[nCic].nCallOutCh, ChMap[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
+										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopLinkFrom"));
+									if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)		//Stop recording
+										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
 								}
 							}
 						}
-						CicState[nCic].nState = CIRCUIT_IDLE;
-						CicState[nCic].szCallInDtmf.Empty();
-						CicState[nCic].szCallOutDtmf.Empty();
+						ChMap[nCic].nState = CIRCUIT_IDLE;
+						ChMap[nCic].szState = StateName[CIRCUIT_IDLE];
+						ChMap[nCic].szDtmf.Empty();
+						ChMap[nCic].szCalleeId.Empty();
+						ChMap[nCic].szCallerId.Empty();
+						ChMap[nCic].szFileName.Empty();
+						//CicState[nCic].szCallOutDtmf.Empty();
 					}
 					break;
+#pragma endregion 空闲
+#pragma region DTMF
 				//Receiving phone number
 				case S_SPY_RCVPHONUM:
 					{
-						if(CicState[nCic].nState == CIRCUIT_IDLE)
+						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RCVPHONUM");
+						if(ChMap[nCic].nState == CIRCUIT_IDLE)
 						{
-							CicState[nCic].nState = CIRCUIT_RCV_PHONUM;
+							ChMap[nCic].nState = CIRCUIT_RCV_PHONUM;
+							ChMap[nCic].szState = StateName[CIRCUIT_RCV_PHONUM];
 						}
 					}
-					break;			
+					break;	
+#pragma endregion DTMF
+#pragma region 振铃
 				//Ringing
 				case S_SPY_RINGING:
 					{
-						CicState[nCic].nState = CIRCUIT_RINGING;
-						
-						if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
-							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
-						CicState[nCic].szCallerId.ReleaseBuffer();
-						if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)//Get called party number
-							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCalleeId"));
-						CicState[nCic].szCalleeId.ReleaseBuffer();
+						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RINGING");
+						ChMap[nCic].nState = CIRCUIT_RINGING;
+						ChMap[nCic].szState = StateName[CIRCUIT_RINGING];
+
+						if(SpyGetCallerId(nCic, ChMap[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
+							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallerId"));
+						ChMap[nCic].szCallerId.ReleaseBuffer();
+						if(SpyGetCalleeId(nCic, ChMap[nCic].szCalleeId.GetBuffer(20)) == -1)//Get called party number
+							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCalleeId"));
+						ChMap[nCic].szCalleeId.ReleaseBuffer();
 					}
-					break;			
+					break;
+#pragma endregion 振铃
+#pragma region 通话
 				//Talking
 				case S_SPY_TALKING:
 					{
-						if(CicState[nCic].nState == CIRCUIT_RCV_PHONUM)
+						LOG4CPLUS_DEBUG(log,"Ch:" << nCic << " State:S_SPY_TALKING");
+						if(ChMap[nCic].nState == CIRCUIT_RCV_PHONUM)
 						{
-							if(SpyGetCallerId(nCic, CicState[nCic].szCallerId.GetBuffer(20)) == -1)
-								LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallerId"));
-							if(SpyGetCalleeId(nCic, CicState[nCic].szCalleeId.GetBuffer(20)) == -1)
-								LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCalleeId"));
+							if(SpyGetCallerId(nCic, ChMap[nCic].szCallerId.GetBuffer(20)) == -1)
+								LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCallerId"));
+							ChMap[nCic].szCallerId.ReleaseBuffer();
+							if(SpyGetCalleeId(nCic, ChMap[nCic].szCalleeId.GetBuffer(20)) == -1)
+								LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCalleeId"));
+							ChMap[nCic].szCalleeId.ReleaseBuffer();
 						}
-						if((CicState[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
-							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallInCh"));
-						if((CicState[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
-							LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetCallOutCh"));
-						CicState[nCic].nState = CIRCUIT_TALKING;
+						if((ChMap[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
+							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallInCh"));
+						if((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
+							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
+
+						ChMap[nCic].nState = CIRCUIT_TALKING;
+						ChMap[nCic].szState = StateName[CIRCUIT_TALKING];
 
 						//Start recording
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
-						CString strRecFile;
 						SYSTEMTIME st;
-						char szTemp[50];
 						GetLocalTime(&st);
-						strRecFile.Format("Rec%d-%d-%d-%d.wav", nCic, st.wHour, st.wMinute, st.wSecond);
-						strcpy(szTemp, strRecFile.GetBuffer(strRecFile.GetLength()));
-						strRecFile.ReleaseBuffer();
+						ChMap[nCic].szFileName.Format("d:\\test\\Rec_%d-%d-%d-%d.wav", nCic, st.wHour, st.wMinute, st.wSecond);
+
 						if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 						{
-							if(SpyRecToFile(nCic, CicState[nCic].wRecDirection, szTemp, -1, 0L, -1, -1, 0) == -1)
-								LOG4CPLUS_ERROR(log,_T("Fail to call SpyRecToFile"));
+							if(SpyRecToFile(nCic, ChMap[nCic].wRecDirection, ChMap[nCic].szFileName.GetBuffer(), -1, 0L, -1, -1, 0) == -1)
+								LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyRecToFile"));
+							else{
+								ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+								ChMap[nCic].nRecordTimes++;
+							}
 						}
 						else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
 						{
-							if(CicState[nCic].wRecDirection == CALL_IN_RECORD)
+							if(ChMap[nCic].wRecDirection == CALL_IN_RECORD)
 							{
-								if(SsmRecToFile(CicState[nCic].nCallInCh, szTemp, -1, 0L, -1, -1, 0) == -1)
-									LOG4CPLUS_ERROR(log,_T("Fail to call SsmRecToFile"));
+								if(SsmRecToFile(ChMap[nCic].nCallInCh, ChMap[nCic].szFileName.GetBuffer(), -1, 0L, -1, -1, 0) == -1)
+									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmRecToFile"));
+								else{
+									ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+									ChMap[nCic].nRecordTimes++;
+								}
 							}
-							else if(CicState[nCic].wRecDirection == CALL_OUT_RECORD)
+							else if(ChMap[nCic].wRecDirection == CALL_OUT_RECORD)
 							{
-								if(SsmRecToFile(CicState[nCic].nCallOutCh, szTemp, -1, 0L, -1, -1, 0) == -1)
-									LOG4CPLUS_ERROR(log, _T("Fail to call SsmRecToFile"));
+								if(SsmRecToFile(ChMap[nCic].nCallOutCh, ChMap[nCic].szFileName.GetBuffer(), -1, 0L, -1, -1, 0) == -1)
+									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmRecToFile"));
+								else{
+									ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+									ChMap[nCic].nRecordTimes++;
+								}
 							}
 							else
 							{
-								if(SsmLinkFrom(CicState[nCic].nCallOutCh, CicState[nCic].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
-									LOG4CPLUS_ERROR(log,_T("Fail to call SsmLinkFrom"));
-								if(SsmSetRecMixer(CicState[nCic].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
-									LOG4CPLUS_ERROR(log,_T("Fail to call SsmSetRecMixer"));
-								if(SsmRecToFile(CicState[nCic].nCallInCh, szTemp, -1, 0L, -1, -1, 0) == -1)//Recording
-									LOG4CPLUS_ERROR(log,_T("Fail to call SsmRecToFile"));
+								if(SsmLinkFrom(ChMap[nCic].nCallOutCh, ChMap[nCic].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
+									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmLinkFrom"));
+								else{
+									ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+									ChMap[nCic].nRecordTimes++;
+								}
+								if(SsmSetRecMixer(ChMap[nCic].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
+									LOG4CPLUS_ERROR(log,"Ch:" << nCic <<  _T(" Fail to call SsmSetRecMixer"));
+								else{
+									ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+									ChMap[nCic].nRecordTimes++;
+								}
+								if(SsmRecToFile(ChMap[nCic].nCallInCh, ChMap[nCic].szFileName.GetBuffer(), -1, 0L, -1, -1, 0) == -1)//Recording
+									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmRecToFile"));
+								else{
+									ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+									ChMap[nCic].nRecordTimes++;
+								}
 							}
 						}
 					}
 					break;
+#pragma endregion 通话
+#pragma region unknown
 				default:
+					{
+						LOG4CPLUS_WARN(log, "Ch:" << nCic <<  "UNKNOWN STATE:" << std::hex << nNewState);
+					}
 					break;
+#pragma endregion unknown
 				}
 			}
+			else{
+				LOG4CPLUS_WARN(log,"nCic:"<< nCic << " Error, not exsist.");
+			}
 			UpdateCircuitListCtrl(nCic);
+#pragma endregion E_CHG_SpyState
 		}
+#pragma region DTMF
 		//Event generated by the driver when DTMF is received
 		else if(nEventCode == E_CHG_RcvDTMF)
 		{
@@ -420,26 +497,83 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			//Switching from channel number to circuit number
  			if((nCic = SpyChToCic(nCh)) == -1)
 			{
-				LOG4CPLUS_ERROR(log,_T("Fail to call SpyChToCic"));
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SpyChToCic"));
+				nCic = nCh;
+			}else{
+				LOG4CPLUS_DEBUG(log,"nCh:" << nCh << " change to cic nCic:" << nCic);
 			}
+			
+			
 			if(nCic != -1)
 			{
-				if(CicState[nCic].nState == CIRCUIT_TALKING)
-				{
-					cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
-					if(nCh == CicState[nCic].nCallInCh)
-					{
-						CicState[nCic].szCallInDtmf += cNewDtmf;
-					}
-					else if(nCh == CicState[nCic].nCallOutCh)
-					{
-						CicState[nCic].szCallOutDtmf += cNewDtmf; 
-					}
-				}
+				cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
+				ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
 			}
 			UpdateCircuitListCtrl(nCic);
-		}else{
-			LOG4CPLUS_WARN(log, "un resolve Event:" << nEventCode);
+		}
+#pragma endregion DTMF
+#pragma region Hook
+		else if (nEventCode == E_CHG_HookState)
+		{
+			nCh = wParam;
+			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_CHG_HookState");
+			nNewState = lParam;
+			switch(nNewState)
+			{
+#pragma region on hook
+			case S_CALL_STANDBY:
+				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_STANDBY");
+					ChMap[nCic].nState = CIRCUIT_IDLE;
+					ChMap[nCic].szState = StateName[CIRCUIT_IDLE];
+					ChMap[nCic].szDtmf.Empty();
+					ChMap[nCic].szCalleeId.Empty();
+					ChMap[nCic].szCallerId.Empty();
+					ChMap[nCic].szFileName.Empty();
+
+				}
+				break;
+#pragma endregion on hook
+#pragma region off hook
+
+			case S_CALL_PICKUPED:
+				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_PICKUPED");
+					ChMap[nCic].nState = STATE_PICKUP;
+					ChMap[nCic].szState = StateName[STATE_PICKUP];
+				}
+				break;
+#pragma endregion off hook
+#pragma region unkown
+			default:
+				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " unknown state:" << std::hex << nNewState);
+				}
+				break;
+#pragma endregion unkown
+			}
+			UpdateCircuitListCtrl(nCh);
+		}
+#pragma endregion Hook
+#pragma region E_CHG_ChState
+		else if (nEventCode == E_CHG_ChState)
+		{
+			nCh = wParam;
+			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_CHG_ChState");
+			
+		}
+#pragma endregion E_CHG_ChState
+#pragma region E_SYS_BargeIn
+		else if (nEventCode == E_SYS_BargeIn)
+		{
+			nCh = wParam;
+			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_SYS_BargeIn");
+		}
+#pragma endregion E_SYS_BargeIn
+		else
+		{
+			nCh = wParam;
+			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << std::hex << nEventCode);
 		}
 		
 	}
@@ -455,9 +589,9 @@ void CRecorder_Dlg::OnRadioCallIn()
 
 	UpdateData(TRUE);
 	
-	m_cmbCic.GetLBText(m_cmbCic.GetCurSel(), sz);
+	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
 	nCurLine = atoi(sz);
-	CicState[nCurLine].wRecDirection = CALL_IN_RECORD;
+	ChMap[nCurLine].wRecDirection = CALL_IN_RECORD;
 }
 //Outgoing call recording
 void CRecorder_Dlg::OnRadioCallOut() 
@@ -468,9 +602,9 @@ void CRecorder_Dlg::OnRadioCallOut()
 
 	UpdateData(TRUE);
 	
-	m_cmbCic.GetLBText(m_cmbCic.GetCurSel(), sz);
+	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
 	nCurLine = atoi(sz);
-	CicState[nCurLine].wRecDirection = CALL_OUT_RECORD;	
+	ChMap[nCurLine].wRecDirection = CALL_OUT_RECORD;	
 }
 //Mix-record
 void CRecorder_Dlg::OnRadioMix() 
@@ -481,9 +615,9 @@ void CRecorder_Dlg::OnRadioMix()
 
 	UpdateData(TRUE);
 	
-	m_cmbCic.GetLBText(m_cmbCic.GetCurSel(), sz);
+	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
 	nCurLine = atoi(sz);
-	CicState[nCurLine].wRecDirection = MIX_RECORD;		
+	ChMap[nCurLine].wRecDirection = MIX_RECORD;		
 }
 
 
@@ -493,10 +627,10 @@ void CRecorder_Dlg::OnSelchangeComboCic()
 	int nCurLine;
 	char sz[100];
 	
-	m_cmbCic.GetLBText(m_cmbCic.GetCurSel(), sz);
+	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
 	nCurLine = atoi(sz);
 
-	switch(CicState[nCurLine].wRecDirection)
+	switch(ChMap[nCurLine].wRecDirection)
 	{
 	case CALL_IN_RECORD:		m_nRecFormat = 0; break;
 	case CALL_OUT_RECORD:		m_nRecFormat = 1; break;

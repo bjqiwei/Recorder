@@ -12,14 +12,15 @@
 #include <log4cplus/logger.h>
 /////////////////////////////////////////////////////////////////////////////
 // CDTP_Event_VCDlg dialog
-#define MAX_CIC 1000		//Maximum number of the monitored circuits
+#define MAX_CH 1000		//Maximum number of the monitored circuits
 //User-defined circuit status
 enum CIRCUIT_STATE
 {
 	CIRCUIT_IDLE,			//Idle state
 	CIRCUIT_RCV_PHONUM,		//State of receiving phone number
 	CIRCUIT_RINGING,		//State of ringing
-	CIRCUIT_TALKING			//State of talking
+	CIRCUIT_TALKING,		//State of talking
+	STATE_PICKUP,			//Õª»ú
 };
 
 
@@ -37,8 +38,8 @@ typedef struct tagCIC_STRUCT
 	CString szState;
 	CString szCallerId;		//Calling party number
 	CString szCalleeId;		//Called party number
-	CString szCallInDtmf;		//DTMF received on the incoming channel
-	CString szCallOutDtmf;	//DTMF received on the outgoing channel
+	CString szDtmf;		//DTMF received on the incoming channel
+	//CString szCallOutDtmf;	//DTMF received on the outgoing channel
 	WORD wRecDirection;			//Recording direction
 	int  nCallInCh;				//Incoming channel
 	int  nCallOutCh;			//Outgoing channel
@@ -57,9 +58,9 @@ public:
 
 // Dialog Data
 	//{{AFX_DATA(CDTP_Event_VCDlg)
-	enum { IDD = IDD_RECORDER_DTP_VC_DIALOG };
-	CListCtrl	m_CicList;
-	CComboBox	m_cmbCic;
+	enum { IDD = IDD_RECORDER_VC_DIALOG };
+	CListCtrl	m_ChList;
+	CComboBox	m_cmbCh;
 	int		m_nRecFormat;
 	int		m_nCallFnMode;
 	//}}AFX_DATA
@@ -91,7 +92,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 private:
-	CIC_STRUCT CicState[MAX_CIC];	//Monitored circuits
+	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
 	int nMaxCh;					//Maximum number of the monitored circuits
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
