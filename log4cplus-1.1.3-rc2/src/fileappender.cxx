@@ -401,7 +401,7 @@ FileAppender::reopen()
             out.clear();
 
             // Re-open the file.
-            open(std::ios_base::out | std::ios_base::ate);
+            open(std::ios_base::out | std::ios_base::ate | std::ios_base::binary);
 
             // Reset last fail time.
             reopen_time = log4cplus::helpers::Time ();
@@ -542,7 +542,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
             // process. Just reopen with the new file.
 
             // Open it up again.
-            open (std::ios::out | std::ios::ate);
+            open (std::ios::out | std::ios::app | std::ios::binary);
             loglog_opening_result (loglog, out, filename);
 
             return;
@@ -579,7 +579,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
     }
 
     // Open it up again in truncation mode
-    open(std::ios::out | std::ios::trunc);
+    open(std::ios::out | std::ios::app | std::ios::binary);
     loglog_opening_result (loglog, out, filename);
 }
 
@@ -685,6 +685,8 @@ DailyRollingFileAppender::init(DailyRollingFileSchedule sch)
     now.setTime(&time);
 
     scheduledFilename = getFilename(now);
+	out.close();
+	out.open(scheduledFilename,std::ios::out | std::ios::app | std::ios::binary);
     nextRolloverTime = calculateNextRolloverTime(now);
 }
 
@@ -705,7 +707,7 @@ DailyRollingFileAppender::~DailyRollingFileAppender()
 void
 DailyRollingFileAppender::close()
 {
-    rollover();
+    //rollover();
     FileAppender::close();
 }
 
@@ -770,32 +772,30 @@ DailyRollingFileAppender::rollover(bool alreadyLocked)
 #if defined (_WIN32)
     // Try to remove the target first. It seems it is not
     // possible to rename over existing file, e.g. "log.2009-11-07.1".
-    ret = file_remove (backupTarget);
+    //ret = file_remove (backupTarget);
 #endif
 
     // Rename e.g. "log.2009-11-07" to "log.2009-11-07.1".
-    ret = file_rename (scheduledFilename, backupTarget);
-    loglog_renaming_result (loglog, scheduledFilename, backupTarget, ret);
+    //ret = file_rename (scheduledFilename, backupTarget);
+    //loglog_renaming_result (loglog, scheduledFilename, backupTarget, ret);
 
 #if defined (_WIN32)
     // Try to remove the target first. It seems it is not
     // possible to rename over existing file, e.g. "log.2009-11-07".
-    ret = file_remove (scheduledFilename);
+    //ret = file_remove (scheduledFilename);
 #endif
    
     // Rename filename to scheduledFilename,
     // e.g. rename "log" to "log.2009-11-07".
-    loglog.debug(
+    /*loglog.debug(
         LOG4CPLUS_TEXT("Renaming file ")
         + filename 
         + LOG4CPLUS_TEXT(" to ")
         + scheduledFilename);
     ret = file_rename (filename, scheduledFilename);
-    loglog_renaming_result (loglog, filename, scheduledFilename, ret);
+    loglog_renaming_result (loglog, filename, scheduledFilename, ret);*/
 
-    // Open a new file, e.g. "log".
-    open(std::ios::out | std::ios::trunc);
-    loglog_opening_result (loglog, out, filename);
+   
 
     // Calculate the next rollover time
     log4cplus::helpers::Time now = Time::gettimeofday();
@@ -804,6 +804,12 @@ DailyRollingFileAppender::rollover(bool alreadyLocked)
         scheduledFilename = getFilename(now);
         nextRolloverTime = calculateNextRolloverTime(now);
     }
+
+	 // Open a new file, e.g. "log".
+	//open(std::ios::out | std::ios::app | std::ios::binary);
+	out.close();
+	out.open(scheduledFilename, std::ios::out | std::ios::app | std::ios::binary);
+    loglog_opening_result (loglog, out, filename);
 }
 
 
@@ -897,6 +903,7 @@ DailyRollingFileAppender::getFilename(const Time& t) const
     tstring result (filename);
     result += LOG4CPLUS_TEXT(".");
     result += t.getFormattedTime(pattern, false);
+	result += LOG4CPLUS_TEXT(".log");
     return result;
 }
 

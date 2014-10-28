@@ -57,13 +57,13 @@ BOOL CRecorder_App::InitInstance()
 	log4cplus::tstring logFile;
 	logFilePath = logFilePath.substr(0,logFilePath.rfind(_T("\\"))+1);
 	logFileName = logFileName.substr(logFileName.rfind(_T("\\"))+1,logFileName.rfind(_T(".")) - logFileName.rfind(_T("\\"))-1);
-	logFileName.append(_T(".log"));
+	//logFileName.append(_T(".log"));
 
 	logFile = logFilePath + logFileName;
 	log4cplus::initialize();
 	log4cplus::SharedAppenderPtr _append(new log4cplus::DailyRollingFileAppender(logFile, 
 		log4cplus::DailyRollingFileSchedule::HOURLY,
-		true,24*60));
+		true,24));
 
 	_append->setName(logFileName);
 	std::string pattern = _T("%D{%y/%m/%d %H:%M:%S.%Q} [%t] %-5p %c{3} %x -  %m;line:%L %n");    
