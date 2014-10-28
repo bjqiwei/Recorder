@@ -166,6 +166,7 @@ HCURSOR CRecorder_Dlg::OnQueryDragIcon()
 //Initialize board
 BOOL CRecorder_Dlg::InitCtiBoard()
 {
+	LOG4CPLUS_INFO(log,_T("Application start..."));
 	CString szCurPath;				//Current path
 	CString szShIndex;					//path to ShIndex.ini
 	CString szShConfig;				//path to ShConfig.ini
@@ -176,18 +177,20 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 	{
 		LOG4CPLUS_ERROR(log, _T("Open ShCti RegKey failed."));
 	}
-	ULONG dwLen;
-	shKey.QueryStringValue("AppPath", szCurPath.GetBuffer(256),&dwLen);
-	szCurPath.ReleaseBuffer();
-	szShIndex = szCurPath;
-	szShConfig = szCurPath;
+	else{
+		ULONG dwLen;
+		shKey.QueryStringValue("AppPath", szCurPath.GetBuffer(256),&dwLen);
+		szCurPath.ReleaseBuffer();
+		szShIndex = szCurPath;
+		szShConfig = szCurPath;
+	}
+	
 	
 	CString CErrMsg;			    //error message
 	
 	szShIndex.Append("ShIndex.ini");
 	szShConfig.Append("ShConfig.ini");
 	
-	LOG4CPLUS_INFO(log,_T("Application start..."));
 	//load configuration file and initialize system
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
