@@ -547,10 +547,19 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				break;
 #pragma endregion off hook
+#pragma region S_CALL_TALKING
+			case S_CALL_TALKING:
+				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_TALKING");
+					ChMap[nCic].nState = CIRCUIT_TALKING;
+					ChMap[nCic].szState = StateName[CIRCUIT_TALKING];
+				}
+				break;
+#pragma endregion S_CALL_TALKING
 #pragma region unkown
 			default:
 				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " unknown state:" << std::hex << nNewState);
+					LOG4CPLUS_WARN(log, "Ch:" << nCh << " unknown state:" << std::hex << nNewState);
 				}
 				break;
 #pragma endregion unkown
@@ -573,6 +582,13 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_SYS_BargeIn");
 		}
 #pragma endregion E_SYS_BargeIn
+#pragma region E_SYS_NoSound
+		else if (nEventCode == E_SYS_NoSound)
+		{
+			nCh = wParam;
+			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_SYS_NoSound");
+		}
+#pragma endregion E_SYS_NoSound
 		else
 		{
 			nCh = wParam;
