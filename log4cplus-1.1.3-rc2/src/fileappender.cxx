@@ -222,8 +222,9 @@ FileAppender::FileAppender(const tstring& filename_,
     , bufferSize (0)
     , buffer (0)
     , localeName (LOG4CPLUS_TEXT ("DEFAULT"))
+	, open_mode(mode_)
 {
-    init(filename_, mode_, internal::empty_str);
+    init(filename_, open_mode, internal::empty_str);
 }
 
 
@@ -234,6 +235,7 @@ FileAppender::FileAppender(const Properties& props,
     , reopenDelay(1)
     , bufferSize (0)
     , buffer (0)
+	, open_mode(mode_)
 {
     bool app = (mode_ & (std::ios_base::app | std::ios_base::ate)) != 0;
     tstring const & fn = props.getProperty( LOG4CPLUS_TEXT("File") );
@@ -258,7 +260,7 @@ FileAppender::FileAppender(const Properties& props,
     localeName = props.getProperty (LOG4CPLUS_TEXT ("Locale"),
         LOG4CPLUS_TEXT ("DEFAULT"));
 
-    init(fn, (app ? std::ios::app : std::ios::trunc), lockFileName);
+    init(fn, open_mode, lockFileName);
 }
 
 
@@ -292,7 +294,6 @@ FileAppender::init(const tstring& filename_,
             return;
         }
     }
-
     open(mode_);
     imbue (get_locale_by_name (localeName));
 
@@ -401,7 +402,7 @@ FileAppender::reopen()
             out.clear();
 
             // Re-open the file.
-            open(std::ios_base::out | std::ios_base::ate | std::ios_base::binary);
+            open(open_mode);
 
             // Reset last fail time.
             reopen_time = log4cplus::helpers::Time ();
@@ -420,14 +421,14 @@ FileAppender::reopen()
 
 RollingFileAppender::RollingFileAppender(const tstring& filename_,
     long maxFileSize_, int maxBackupIndex_, bool immediateFlush_)
-    : FileAppender(filename_, std::ios::app, immediateFlush_)
+    : FileAppender(filename_, std::ios::app | std::ios::binary, immediateFlush_)
 {
     init(maxFileSize_, maxBackupIndex_);
 }
 
 
 RollingFileAppender::RollingFileAppender(const Properties& properties)
-    : FileAppender(properties, std::ios::app)
+    : FileAppender(properties, std::ios::app | std::ios::binary)
 {
     long tmpMaxFileSize = DEFAULT_ROLLING_LOG_SIZE;
     int tmpMaxBackupIndex = 1;
@@ -542,7 +543,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
             // process. Just reopen with the new file.
 
             // Open it up again.
-            open (std::ios::out | std::ios::app | std::ios::binary);
+            open (open_mode);
             loglog_opening_result (loglog, out, filename);
 
             return;
@@ -579,7 +580,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
     }
 
     // Open it up again in truncation mode
-    open(std::ios::out | std::ios::app | std::ios::binary);
+    open(open_mode);
     loglog_opening_result (loglog, out, filename);
 }
 
@@ -591,7 +592,7 @@ RollingFileAppender::rollover(bool alreadyLocked)
 DailyRollingFileAppender::DailyRollingFileAppender(
     const tstring& filename_, DailyRollingFileSchedule schedule_,
     bool immediateFlush_, int maxBackupIndex_)
-    : FileAppender(filename_, std::ios::binary, immediateFlush_)
+    : FileAppender(filename_, std::ios::app | std::ios::binary, immediateFlush_)
     , maxBackupIndex(maxBackupIndex_)
 {
     init(schedule_);
@@ -601,7 +602,7 @@ DailyRollingFileAppender::DailyRollingFileAppender(
 
 DailyRollingFileAppender::DailyRollingFileAppender(
     const Properties& properties)
-    : FileAppender(properties, std::ios::binary)
+    : FileAppender(properties, std::ios::app | std::ios::binary)
     , maxBackupIndex(10)
 {
     DailyRollingFileSchedule theSchedule = DAILY;
@@ -686,7 +687,7 @@ DailyRollingFileAppender::init(DailyRollingFileSchedule sch)
 
     scheduledFilename = getFilename(now);
 	out.close();
-	out.open(scheduledFilename,std::ios::out | std::ios::app | std::ios::binary);
+	out.open(scheduledFilename, open_mode);
     nextRolloverTime = calculateNextRolloverTime(now);
 }
 
@@ -808,7 +809,7 @@ DailyRollingFileAppender::rollover(bool alreadyLocked)
 	 // Open a new file, e.g. "log".
 	//open(std::ios::out | std::ios::app | std::ios::binary);
 	out.close();
-	out.open(scheduledFilename, std::ios::out | std::ios::app | std::ios::binary);
+	out.open(scheduledFilename, open_mode);
     loglog_opening_result (loglog, out, filename);
 }
 

@@ -162,6 +162,7 @@ namespace log4cplus
         log4cplus::tstring localeName;
 
         log4cplus::helpers::Time reopen_time;
+		std::ios_base::openmode open_mode;
 
     private:
         LOG4CPLUS_PRIVATE void init(const log4cplus::tstring& filename,
