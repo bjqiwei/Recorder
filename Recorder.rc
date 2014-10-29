@@ -78,19 +78,6 @@ CAPTION "Recorder"
 FONT 9, "ËÎÌו", 0, 0, 0x1
 BEGIN
     CONTROL         "List2",IDC_LIST_DTP,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,7,7,535,222
-    LTEXT           "Cic",IDC_STATIC_CIRCUIT,317,266,18,12
-    COMBOBOX        IDC_COMBO_CIC,342,264,35,71,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP,WS_EX_STATICEDGE
-    CONTROL         "Record only incoming channels",IDC_RADIO_CALL_IN,"Button",BS_AUTORADIOBUTTON | BS_MULTILINE | WS_GROUP,396,246,134,12
-    CONTROL         "Record only outgoing channels",IDC_RADIO_CALL_OUT,
-                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,396,265,133,12
-    CONTROL         "Mix the recording of incoming and outgoing channels",IDC_RADIO_MIX,
-                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,396,281,135,20
-    CONTROL         "Call the function with circuit number as its parameter",IDC_RADIO_CIRCUIT,
-                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE | WS_GROUP,34,248,140,24
-    CONTROL         "Call the function with channel number as its parameter",IDC_RADIO_CH,
-                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,34,276,137,20
-    GROUPBOX        "Record Mode Setting",IDC_STATIC,305,233,237,73
-    GROUPBOX        "Function For Recording Mode",IDC_STATIC,14,233,210,73
 END
 
 

@@ -50,7 +50,7 @@ CRecorder_Dlg::CRecorder_Dlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CRecorder_Dlg::IDD, pParent),nMaxCh(0)
 {
 	//{{AFX_DATA_INIT(CDTP_Event_VCDlg)
-	m_nRecFormat = 2;
+	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
 	//}}AFX_DATA_INIT
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
@@ -66,9 +66,6 @@ void CRecorder_Dlg::DoDataExchange(CDataExchange* pDX)
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
 	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
-	DDX_Control(pDX, IDC_COMBO_CIC, m_cmbCh);
-	DDX_Radio(pDX, IDC_RADIO_CALL_IN, m_nRecFormat);
-	DDX_Radio(pDX, IDC_RADIO_CIRCUIT, m_nCallFnMode);
 	//}}AFX_DATA_MAP
 }
 
@@ -77,13 +74,7 @@ BEGIN_MESSAGE_MAP(CRecorder_Dlg, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_RADIO_CALL_IN, OnRadioCallIn)
-	ON_BN_CLICKED(IDC_RADIO_CALL_OUT, OnRadioCallOut)
-	ON_BN_CLICKED(IDC_RADIO_MIX, OnRadioMix)
-	ON_CBN_SELCHANGE(IDC_COMBO_CIC, OnSelchangeComboCic)
 	ON_WM_DESTROY()
-	ON_BN_CLICKED(IDC_RADIO_CIRCUIT, OnRadioCircuit)
-	ON_BN_CLICKED(IDC_RADIO_CH, OnRadioCh)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -599,65 +590,6 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 	return CDialog::WindowProc(message, wParam, lParam);
 }
-//Incoming call recording
-void CRecorder_Dlg::OnRadioCallIn() 
-{
-	// TODO: Add your control notification handler code here
-	int nCurLine;
-	char sz[100];
-
-	UpdateData(TRUE);
-	
-	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
-	nCurLine = atoi(sz);
-	ChMap[nCurLine].wRecDirection = CALL_IN_RECORD;
-}
-//Outgoing call recording
-void CRecorder_Dlg::OnRadioCallOut() 
-{
-	// TODO: Add your control notification handler code here
-	int nCurLine;
-	char sz[100];
-
-	UpdateData(TRUE);
-	
-	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
-	nCurLine = atoi(sz);
-	ChMap[nCurLine].wRecDirection = CALL_OUT_RECORD;	
-}
-//Mix-record
-void CRecorder_Dlg::OnRadioMix() 
-{
-	// TODO: Add your control notification handler code here
-	int nCurLine;
-	char sz[100];
-
-	UpdateData(TRUE);
-	
-	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
-	nCurLine = atoi(sz);
-	ChMap[nCurLine].wRecDirection = MIX_RECORD;		
-}
-
-
-void CRecorder_Dlg::OnSelchangeComboCic() 
-{
-	// TODO: Add your control notification handler code here
-	int nCurLine;
-	char sz[100];
-	
-	m_cmbCh.GetLBText(m_cmbCh.GetCurSel(), sz);
-	nCurLine = atoi(sz);
-
-	switch(ChMap[nCurLine].wRecDirection)
-	{
-	case CALL_IN_RECORD:		m_nRecFormat = 0; break;
-	case CALL_OUT_RECORD:		m_nRecFormat = 1; break;
-	case MIX_RECORD:			m_nRecFormat = 2; break;
-	}
-
-	UpdateData(FALSE);		
-}
 
 
 void CRecorder_Dlg::OnDestroy() 
@@ -672,16 +604,4 @@ void CRecorder_Dlg::OnDestroy()
 }
 
 
-void CRecorder_Dlg::OnRadioCircuit() 
-{
-	// TODO: Add your control notification handler code here
-	UpdateData(TRUE);	
-}
-
-
-void CRecorder_Dlg::OnRadioCh() 
-{
-	// TODO: Add your control notification handler code here
-	UpdateData(TRUE);
-}
 

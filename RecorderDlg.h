@@ -61,7 +61,7 @@ public:
 	enum { IDD = IDD_RECORDER_VC_DIALOG };
 	CListCtrl	m_ChList;
 	CComboBox	m_cmbCh;
-	int		m_nRecFormat;
+	//int		m_nRecFormat;
 	int		m_nCallFnMode;
 	//}}AFX_DATA
 
@@ -82,13 +82,7 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-	afx_msg void OnRadioCallIn();
-	afx_msg void OnRadioCallOut();
-	afx_msg void OnRadioMix();
-	afx_msg void OnSelchangeComboCic();
 	afx_msg void OnDestroy();
-	afx_msg void OnRadioCircuit();
-	afx_msg void OnRadioCh();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 private:
