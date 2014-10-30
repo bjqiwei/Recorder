@@ -67,6 +67,7 @@ void CRecorder_Dlg::DoDataExchange(CDataExchange* pDX)
 	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
 	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
 	//}}AFX_DATA_MAP
+	DDX_Control(pDX, IDC_STATIC_CAPACITY, m_CapacityView);
 }
 
 BEGIN_MESSAGE_MAP(CRecorder_Dlg, CDialog)
@@ -109,7 +110,7 @@ BOOL CRecorder_Dlg::OnInitDialog()
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-	
+	InitCapacityView();
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -211,7 +212,7 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 			LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
 		}
 	}
-	CString str;
+
 	for(int i = 0; i < nMaxCh; i++)
 	{
 		ChMap[i].nState = CIRCUIT_IDLE;
@@ -221,8 +222,6 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 		ChMap[i].nCallOutCh = -1;
 		ChMap[i].nRecordTimes = 0;
 		ChMap[i].tStartTime = CTime::GetCurrentTime();
-		str.Format("%d", i);
-		m_cmbCh.InsertString(-1, str);
 	}
 	
 	return TRUE;
@@ -257,7 +256,7 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 	for(int i = 0; i < nMaxCh; i++)
 	{
 		str.Format("%d",i);
-		m_ChList.InsertItem(i, str);
+		m_ChList.InsertItem(i,str);
 	}
 }
 
@@ -604,4 +603,21 @@ void CRecorder_Dlg::OnDestroy()
 }
 
 
+
+
+
+void CRecorder_Dlg::InitCapacityView(void)
+{
+	//COLORREF m_ncolor = RGB(0,0,0);
+	//CClientDC dc(this->GetWindow(IDC_STATIC_CAPACITY));//获取设备句柄  
+	////  dc.SetROP2(R2_NOT); //在MouseMove消息响应中使用过该函数了，所以在这里再一次使用会使得其恢复为屏幕的颜色  
+	//dc.SelectStockObject(NULL_BRUSH);  //设置画刷为空画刷  
+
+	//CPen pen(PS_SOLID,100,m_ncolor);
+	//dc.SelectObject(&pen);
+	//CBrush *pBrush=new CBrush(m_ncolor);
+	//dc.SelectObject(pBrush);
+	//long x,y,w,h;
+	//this->m_CapacityView.accLocation();
+	//dc.Ellipse(0,0,20,20);
 

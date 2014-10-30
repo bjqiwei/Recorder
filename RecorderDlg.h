@@ -60,7 +60,6 @@ public:
 	//{{AFX_DATA(CDTP_Event_VCDlg)
 	enum { IDD = IDD_RECORDER_VC_DIALOG };
 	CListCtrl	m_ChList;
-	CComboBox	m_cmbCh;
 	//int		m_nRecFormat;
 	int		m_nCallFnMode;
 	//}}AFX_DATA
@@ -91,6 +90,9 @@ private:
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
+	void InitCapacityView(void);
+public:
+	CButton m_CapacityView;
 };
 
 //{{AFX_INSERT_LOCATION}}
