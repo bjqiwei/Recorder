@@ -95,7 +95,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-
+	
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -124,25 +124,7 @@ void CRecorderDlg::OnPaint()
 	}
 	else
 	{
-		CDC * dc = this->m_ctrCapacityView.GetDC();
-		
-		CPen pen,*pOldPen;
-		CBrush brush,*pOldBrush;
-		pen.CreatePen(PS_SOLID,1,RGB(255,0,0));
-		brush.CreateSolidBrush(RGB(0,255,0));
-
-		pOldPen = dc->SelectObject(&pen);         
-		pOldBrush = dc->SelectObject(&brush);
-		CRect rc;
-		this->m_ctrCapacityView.GetClientRect(&rc);
-		dc->Ellipse(0, 0, 100, 100); 
-
-		//Release GDI Object       
-		dc->SelectObject(pOldPen);         
-		dc->SelectObject(pOldBrush);
-		pen.DeleteObject();
-		brush.DeleteObject();
-		ReleaseDC(dc);
+		DrawCapacityView();
 		CDialogEx::OnPaint();
 	}
 }
@@ -600,4 +582,36 @@ void CRecorderDlg::OnDestroy()
 	LOG4CPLUS_INFO(log,_T("Application exit..."));
 	if(SsmCloseCti() == -1)
 		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
+}
+
+
+void CRecorderDlg::DrawCapacityView()
+{
+	CDC * dc = this->m_ctrCapacityView.GetDC();
+
+	CPen pen,*pOldPen;
+	CBrush brush,*pOldBrush;
+	COLORREF penColor = RGB(0xFF,0xFF,0xFF);
+	COLORREF freeColor = RGB(0xCC,0x33,0x99);
+	COLORREF applyColor = RGB(0x00,0x33,0x99);
+	pen.CreatePen(PS_SOLID,1,penColor);
+	brush.CreateSolidBrush(applyColor);
+
+	pOldPen = dc->SelectObject(&pen);         
+	pOldBrush = dc->SelectObject(&brush);
+
+
+	dc->Pie(0, 0, 120, 120, 120, 60, 0, 60); 
+
+	brush.DeleteObject();
+	brush.CreateSolidBrush(freeColor);
+	dc->SelectObject(&brush);
+
+	dc->Pie(0, 0, 120, 120, 0,60,60,120); 
+	//Release GDI Object       
+	dc->SelectObject(pOldPen);         
+	dc->SelectObject(pOldBrush);
+	pen.DeleteObject();
+	brush.DeleteObject();
+	ReleaseDC(dc);
 }

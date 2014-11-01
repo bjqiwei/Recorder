@@ -84,4 +84,5 @@ public:
 	afx_msg void OnDestroy();
 	CRichEditCtrl m_ctrCapacityView;
 
+	void DrawCapacityView();
 };
