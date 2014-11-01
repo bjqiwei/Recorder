@@ -1,16 +1,16 @@
-// DTP_Event_VCDlg.cpp : implementation file
+
+// RecorderDlg.cpp : 实现文件
 //
 
 #include "stdafx.h"
 #include "Recorder.h"
 #include "RecorderDlg.h"
+#include "afxdialogex.h"
 #include <log4cplus/loggingmacros.h>
 #include <iostream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
-#undef THIS_FILE
-static char THIS_FILE[] = __FILE__;
 #endif
 
 #define  ChannelWidth 60
@@ -39,67 +39,51 @@ static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"Ca
 static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth,  DTMFWidth,RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
 static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};		
-/////////////////////////////////////////////////////////////////////////////
-// CAboutDlg dialog used for App About
+// CRecorderDlg 对话框
 
 
-/////////////////////////////////////////////////////////////////////////////
-// CDTP_Event_VCDlg dialog
 
-CRecorder_Dlg::CRecorder_Dlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CRecorder_Dlg::IDD, pParent),nMaxCh(0)
+
+CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
+	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0)
 {
-	//{{AFX_DATA_INIT(CDTP_Event_VCDlg)
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
-	//}}AFX_DATA_INIT
-	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
-}
-CRecorder_Dlg::~CRecorder_Dlg()
-{
+	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-void CRecorder_Dlg::DoDataExchange(CDataExchange* pDX)
+void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CDTP_Event_VCDlg)
+	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
-	//}}AFX_DATA_MAP
-	DDX_Control(pDX, IDC_STATIC_CAPACITY, m_CapacityView);
 }
 
-BEGIN_MESSAGE_MAP(CRecorder_Dlg, CDialog)
-	//{{AFX_MSG_MAP(CDTP_Event_VCDlg)
-	ON_WM_SYSCOMMAND()
+BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_DESTROY()
-	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// CDTP_Event_VCDlg message handlers
 
-BOOL CRecorder_Dlg::OnInitDialog()
+// CRecorderDlg 消息处理程序
+
+BOOL CRecorderDlg::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+	CDialogEx::OnInitDialog();
 
-	
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	
+	// 设置此对话框的图标。当应用程序主窗口不是对话框时，框架将自动
+	//  执行此操作
+	SetIcon(m_hIcon, TRUE);			// 设置大图标
+	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// Set the icon for this dialog.  The framework does this automatically
-	//  when the application's main window is not a dialog
-	SetIcon(m_hIcon, TRUE);			// Set big icon
-	SetIcon(m_hIcon, FALSE);		// Set small icon
-	
+	// TODO: 在此添加额外的初始化代码
 	// TODO: Add extra initialization here
 	if(!InitCtiBoard())		
 	{
-		PostQuitMessage(0);
-		return FALSE;
+		//PostQuitMessage(0);
+		//return FALSE;
 	}
 	//Set event-driven mode
 	EVENT_SET_INFO EventSet;		
@@ -110,28 +94,23 @@ BOOL CRecorder_Dlg::OnInitDialog()
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-	InitCapacityView();
-	return TRUE;  // return TRUE  unless you set the focus to a control
+
+	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
-void CRecorder_Dlg::OnSysCommand(UINT nID, LPARAM lParam)
-{
-	CDialog::OnSysCommand(nID, lParam);
-}
+// 如果向对话框添加最小化按钮，则需要下面的代码
+//  来绘制该图标。对于使用文档/视图模型的 MFC 应用程序，
+//  这将由框架自动完成。
 
-// If you add a minimize button to your dialog, you will need the code below
-//  to draw the icon.  For MFC applications using the document/view model,
-//  this is automatically done for you by the framework.
-
-void CRecorder_Dlg::OnPaint() 
+void CRecorderDlg::OnPaint()
 {
 	if (IsIconic())
 	{
-		CPaintDC dc(this); // device context for painting
+		CPaintDC dc(this); // 用于绘制的设备上下文
 
-		SendMessage(WM_ICONERASEBKGND, (WPARAM) dc.GetSafeHdc(), 0);
+		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// Center icon in client rectangle
+		// 使图标在工作区矩形中居中
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
@@ -139,24 +118,25 @@ void CRecorder_Dlg::OnPaint()
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// Draw the icon
+		// 绘制图标
 		dc.DrawIcon(x, y, m_hIcon);
 	}
 	else
 	{
-		CDialog::OnPaint();
+		CDialogEx::OnPaint();
 	}
 }
 
-// The system calls this to obtain the cursor to display while the user drags
-//  the minimized window.
-HCURSOR CRecorder_Dlg::OnQueryDragIcon()
+//当用户拖动最小化窗口时系统调用此函数取得光标
+//显示。
+HCURSOR CRecorderDlg::OnQueryDragIcon()
 {
-	return (HCURSOR) m_hIcon;
+	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
 //Initialize board
-BOOL CRecorder_Dlg::InitCtiBoard()
+BOOL CRecorderDlg::InitCtiBoard()
 {
 	LOG4CPLUS_INFO(log,_T("Application start..."));
 	CString szCurPath;				//Current path
@@ -176,13 +156,13 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 		szShIndex = szCurPath;
 		szShConfig = szCurPath;
 	}
-	
-	
+
+
 	CString CErrMsg;			    //error message
-	
+
 	szShIndex.Append("ShIndex.ini");
 	szShConfig.Append("ShConfig.ini");
-	
+
 	//load configuration file and initialize system
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
@@ -191,7 +171,7 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
-	
+
 	//Judge if the number of initialized boards is the same as
 	//		   that of boards specified in the configuration file
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
@@ -201,8 +181,8 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
-	
-	
+
+
 	//Get the maximum number of the monitored circuits
 	nMaxCh = SpyGetMaxCic();
 	if(nMaxCh <= 0){
@@ -223,14 +203,14 @@ BOOL CRecorder_Dlg::InitCtiBoard()
 		ChMap[i].nRecordTimes = 0;
 		ChMap[i].tStartTime = CTime::GetCurrentTime();
 	}
-	
+
 	return TRUE;
 }
 
 //Initialize list
-void CRecorder_Dlg::InitCircuitListCtrl()
+void CRecorderDlg::InitCircuitListCtrl()
 {
-	
+
 	//m_CicList.SetBkColor(RGB(0,0,0));
 	//m_CicList.SetTextColor(RGB(0,255,0));
 	m_ChList.SetTextBkColor(RGB(255,255,204));
@@ -251,7 +231,7 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 		lvc.cx = ColumnWidth[i];
 		m_ChList.InsertColumn(i, &lvc);
 	}
-	
+
 	CString str;
 	for(int i = 0; i < nMaxCh; i++)
 	{
@@ -261,7 +241,7 @@ void CRecorder_Dlg::InitCircuitListCtrl()
 }
 
 //Update list
-void CRecorder_Dlg::UpdateCircuitListCtrl(unsigned int nIndex)
+void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 {
 	CString strNewData;
 	m_ChList.SetItemText(nIndex, ChState, ChMap[nIndex].szState);
@@ -273,11 +253,11 @@ void CRecorder_Dlg::UpdateCircuitListCtrl(unsigned int nIndex)
 	m_ChList.SetItemText(nIndex, ChTimes, strNewData);
 	m_ChList.SetItemText(nIndex, ChStartTime , ChMap[nIndex].tStartTime.Format("%Y-%m-%d %H:%M:%S"));
 	m_ChList.SetItemText(nIndex, ChFileName, ChMap[nIndex].szFileName);
-	
+
 }
 
 
-LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
+LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	// TODO: Add your specialized code here and/or call the base class
 	static int nCic;
@@ -290,23 +270,23 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	//	   windows message code：event code + 0x7000(WM_USER)
 	if(message > WM_USER)  
 	{	
-		
+
 		nEventCode = message - WM_USER;	
 		LOG4CPLUS_DEBUG(log,"message:" << message << ",SanHui nEventCode:" << std::hex <<nEventCode);
-		
+
 		//Event notifying the state change of the monitored circuit
 		if(nEventCode == E_CHG_SpyState)	
 		{
 #pragma region E_CHG_SpyState
 			nCic = wParam;
 			LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " E_CHG_SpyState");
-	 		nNewState = (int)lParam & 0xFFFF;
-			
+			nNewState = (int)lParam & 0xFFFF;
+
 			if(nCic >= 0 && nCic < MAX_CH)
 			{
 				switch(nNewState)
 				{
-				//Idle state
+					//Idle state
 #pragma region 空闲
 				case S_SPY_STANDBY:
 
@@ -356,7 +336,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 #pragma endregion 空闲
 #pragma region DTMF
-				//Receiving phone number
+					//Receiving phone number
 				case S_SPY_RCVPHONUM:
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RCVPHONUM");
@@ -369,7 +349,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					break;	
 #pragma endregion DTMF
 #pragma region 振铃
-				//Ringing
+					//Ringing
 				case S_SPY_RINGING:
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RINGING");
@@ -386,7 +366,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 #pragma endregion 振铃
 #pragma region 通话
-				//Talking
+					//Talking
 				case S_SPY_TALKING:
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic << " State:S_SPY_TALKING");
@@ -488,15 +468,15 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			nCh = wParam;
 			//Switching from channel number to circuit number
- 			if((nCic = SpyChToCic(nCh)) == -1)
+			if((nCic = SpyChToCic(nCh)) == -1)
 			{
 				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SpyChToCic"));
 				nCic = nCh;
 			}else{
 				LOG4CPLUS_DEBUG(log,"nCh:" << nCh << " change to cic nCic:" << nCic);
 			}
-			
-			
+
+
 			if(nCic != -1)
 			{
 				cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
@@ -562,7 +542,7 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			nCh = wParam;
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_CHG_ChState");
-			
+
 		}
 #pragma endregion E_CHG_ChState
 #pragma region E_SYS_BargeIn
@@ -584,42 +564,20 @@ LRESULT CRecorder_Dlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			nCh = wParam;
 			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << std::hex << nEventCode);
 		}
-		
+
 	}
 
-	return CDialog::WindowProc(message, wParam, lParam);
+	return CDialogEx::WindowProc(message, wParam, lParam);
 }
 
 
-void CRecorder_Dlg::OnDestroy() 
+void CRecorderDlg::OnDestroy()
 {
-	CDialog::OnDestroy();
-	
+	CDialogEx::OnDestroy();
+
 	// TODO: Add your message handler code here
 	//Close board driver
 	LOG4CPLUS_INFO(log,_T("Application exit..."));
 	if(SsmCloseCti() == -1)
 		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
 }
-
-
-
-
-
-void CRecorder_Dlg::InitCapacityView(void)
-{
-	//COLORREF m_ncolor = RGB(0,0,0);
-	CClientDC dc(this);//获取设备句柄  
-	////  dc.SetROP2(R2_NOT); //在MouseMove消息响应中使用过该函数了，所以在这里再一次使用会使得其恢复为屏幕的颜色  
-	//dc.SelectStockObject(NULL_BRUSH);  //设置画刷为空画刷  
-
-	//CPen pen(PS_SOLID,100,m_ncolor);
-	//dc.SelectObject(&pen);
-	//CBrush *pBrush=new CBrush(m_ncolor);
-	//dc.SelectObject(pBrush);
-	//long x,y,w,h;
-	//this->m_CapacityView.accLocation();
-	dc.Ellipse(0,0,20,20);
-	
-}
-

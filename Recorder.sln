@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "log4cplusS", "log4cplus-1.1.3-rc2\msvc10\log4cplusS.vcxproj", "{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Recorder", "Recorder\Recorder.vcxproj", "{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Recorder", "Recorder.vcxproj", "{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "log4cplusS", "log4cplus-1.1.3-rc2\msvc10\log4cplusS.vcxproj", "{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +13,12 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Debug|Win32.Build.0 = Debug|Win32
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Debug|x64.ActiveCfg = Debug|Win32
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Release|Win32.ActiveCfg = Release|Win32
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Release|Win32.Build.0 = Release|Win32
+		{A0565D15-3234-45B4-AD2A-2ACE321FFF1C}.Release|x64.ActiveCfg = Release|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|Win32.ActiveCfg = Debug|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|Win32.Build.0 = Debug|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Debug|x64.ActiveCfg = Debug|x64
@@ -21,17 +27,8 @@ Global
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Release|Win32.Build.0 = Release|Win32
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Release|x64.ActiveCfg = Release|x64
 		{BEC0CD2F-60CD-40E2-A89B-AB10E902F1D5}.Release|x64.Build.0 = Release|x64
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Debug|Win32.ActiveCfg = Debug|Win32
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Debug|Win32.Build.0 = Debug|Win32
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Debug|x64.ActiveCfg = Debug|Win32
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Release|Win32.ActiveCfg = Release|Win32
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Release|Win32.Build.0 = Release|Win32
-		{8F8ABF0B-F0DB-4FDE-AFE1-B51F0B5BF0FE}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(DPCodeReviewSolutionGUID) = preSolution
-		DPCodeReviewSolutionGUID = {00000000-0000-0000-0000-000000000000}
 	EndGlobalSection
 EndGlobal

@@ -1,17 +1,15 @@
-// DTP_Event_VCDlg.h : header file
+
+// RecorderDlg.h : 头文件
 //
 
-#if !defined(AFX_DTP_EVENT_VCDLG_H__B3DCE24A_E157_4D3C_B711_FDB6CA134CD4__INCLUDED_)
-#define AFX_DTP_EVENT_VCDLG_H__B3DCE24A_E157_4D3C_B711_FDB6CA134CD4__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+
 #include "C:\ShCti\api\Vc6.0\Inc\shpa3api.h"
 #include <string>
 #include <log4cplus/logger.h>
 /////////////////////////////////////////////////////////////////////////////
-// CDTP_Event_VCDlg dialog
+
+// CRecorderDlg 对话框
 #define MAX_CH 1000		//Maximum number of the monitored circuits
 //User-defined circuit status
 enum CIRCUIT_STATE
@@ -30,7 +28,7 @@ enum RECORD_DIRECTION
 	CALL_OUT_RECORD,	//Outgoing call recording
 	MIX_RECORD			//Mix-record of incoming/outgoing call 
 };
-	
+
 
 typedef struct tagCIC_STRUCT
 {
@@ -48,54 +46,39 @@ typedef struct tagCIC_STRUCT
 	CString szFileName; // record file name
 }CIC_STRUCT;
 
-
-class CRecorder_Dlg : public CDialog
+class CRecorderDlg : public CDialogEx
 {
-// Construction
+// 构造
 public:
-	CRecorder_Dlg(CWnd* pParent = NULL);	// standard constructor
-	~CRecorder_Dlg();
+	CRecorderDlg(CWnd* pParent = NULL);	// 标准构造函数
 
-// Dialog Data
-	//{{AFX_DATA(CDTP_Event_VCDlg)
-	enum { IDD = IDD_RECORDER_VC_DIALOG };
-	CListCtrl	m_ChList;
-	//int		m_nRecFormat;
-	int		m_nCallFnMode;
-	//}}AFX_DATA
+// 对话框数据
+	enum { IDD = IDD_RECORDER_DIALOG };
 
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CDTP_Event_VCDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
-	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
-	//}}AFX_VIRTUAL
+	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
-// Implementation
+
+// 实现
 protected:
 	HICON m_hIcon;
 	log4cplus::Logger log;
-	// Generated message map functions
-	//{{AFX_MSG(CDTP_Event_VCDlg)
+	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-	afx_msg void OnDestroy();
-	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	CListCtrl m_ChList;
+	//int		m_nRecFormat;
+	int		m_nCallFnMode;
+	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 private:
 	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
 	int nMaxCh;					//Maximum number of the monitored circuits
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
-	void InitCapacityView(void);
 public:
-	CButton m_CapacityView;
+	afx_msg void OnDestroy();
 };
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_DTP_EVENT_VCDLG_H__B3DCE24A_E157_4D3C_B711_FDB6CA134CD4__INCLUDED_)
