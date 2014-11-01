@@ -7,6 +7,7 @@
 #include "C:\ShCti\api\Vc6.0\Inc\shpa3api.h"
 #include <string>
 #include <log4cplus/logger.h>
+#include "afxcmn.h"
 /////////////////////////////////////////////////////////////////////////////
 
 // CRecorderDlg ¶Ô»°¿ò
@@ -81,4 +82,6 @@ private:
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
 public:
 	afx_msg void OnDestroy();
+	CRichEditCtrl m_ctrCapacityView;
+
 };

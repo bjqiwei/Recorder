@@ -58,6 +58,7 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
+	DDX_Control(pDX, IDC_RICHEDIT21, m_ctrCapacityView);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -123,6 +124,25 @@ void CRecorderDlg::OnPaint()
 	}
 	else
 	{
+		CDC * dc = this->m_ctrCapacityView.GetDC();
+		
+		CPen pen,*pOldPen;
+		CBrush brush,*pOldBrush;
+		pen.CreatePen(PS_SOLID,1,RGB(255,0,0));
+		brush.CreateSolidBrush(RGB(0,255,0));
+
+		pOldPen = dc->SelectObject(&pen);         
+		pOldBrush = dc->SelectObject(&brush);
+		CRect rc;
+		this->m_ctrCapacityView.GetClientRect(&rc);
+		dc->Ellipse(0, 0, 100, 100); 
+
+		//Release GDI Object       
+		dc->SelectObject(pOldPen);         
+		dc->SelectObject(pOldBrush);
+		pen.DeleteObject();
+		brush.DeleteObject();
+		ReleaseDC(dc);
 		CDialogEx::OnPaint();
 	}
 }
