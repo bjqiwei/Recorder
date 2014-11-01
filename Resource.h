@@ -6,7 +6,6 @@
 #define IDR_MAINFRAME                   128
 #define IDC_LIST_DTP                    1001
 #define IDC_STATIC_RECORD_NUM           1003
-#define IDC_STATIC_CAPALITY             1004
 #define IDC_STATIC_CAPACITY             1004
 
 // Next default values for new objects

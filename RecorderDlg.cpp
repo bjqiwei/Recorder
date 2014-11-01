@@ -609,7 +609,7 @@ void CRecorder_Dlg::OnDestroy()
 void CRecorder_Dlg::InitCapacityView(void)
 {
 	//COLORREF m_ncolor = RGB(0,0,0);
-	//CClientDC dc(this->GetWindow(IDC_STATIC_CAPACITY));//获取设备句柄  
+	CClientDC dc(this);//获取设备句柄  
 	////  dc.SetROP2(R2_NOT); //在MouseMove消息响应中使用过该函数了，所以在这里再一次使用会使得其恢复为屏幕的颜色  
 	//dc.SelectStockObject(NULL_BRUSH);  //设置画刷为空画刷  
 
@@ -619,5 +619,7 @@ void CRecorder_Dlg::InitCapacityView(void)
 	//dc.SelectObject(pBrush);
 	//long x,y,w,h;
 	//this->m_CapacityView.accLocation();
-	//dc.Ellipse(0,0,20,20);
+	dc.Ellipse(0,0,20,20);
+	
+}
 
