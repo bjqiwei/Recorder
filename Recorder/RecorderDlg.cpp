@@ -51,6 +51,8 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	, m_strFileDir(_T(""))
 	, m_strDataBase(_T(""))
 	, m_KeepDays(0)
+	, m_DBKeepDays(0)
+	, m_RecordingSum(0)
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
@@ -67,6 +69,8 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT1, m_strFileDir);
 	DDX_Text(pDX, IDC_EDIT_DATABASE, m_strDataBase);
 	DDX_Text(pDX, IDC_EDIT2, m_KeepDays);
+	DDX_Text(pDX, IDC_EDIT3, m_DBKeepDays);
+	DDX_Text(pDX, IDC_EDIT4, m_RecordingSum);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -76,6 +80,7 @@ BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON1, &CRecorderDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_BUTTON2, &CRecorderDlg::OnBnClickedButton2)
 	ON_BN_CLICKED(IDC_BUTTON3, &CRecorderDlg::OnBnClickedButton3)
+	ON_BN_CLICKED(IDC_BUTTON4, &CRecorderDlg::OnBnClickedButton4)
 END_MESSAGE_MAP()
 
 
@@ -109,6 +114,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	m_strFileDir = ReadRegKeyString("FileDir");
 	m_strDataBase = ReadRegKeyString("DataBase");
 	m_KeepDays = ReadRegKeyDWORD("KeepDays");
+	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -750,4 +756,13 @@ DWORD CRecorderDlg::ReadRegKeyDWORD( CString name )
 		shKey.QueryDWORDValue(name.GetBuffer(), dwValue);
 	}
 	return dwValue;
+}
+
+
+void CRecorderDlg::OnBnClickedButton4()
+{
+	// TODO: Add your control notification handler code here
+	UpdateData(TRUE);
+	SetRegKey("DBKeepDays",m_DBKeepDays);
+	UpdateData(FALSE);
 }

@@ -101,4 +101,10 @@ private:
 	UINT m_KeepDays;
 public:
 	afx_msg void OnBnClickedButton3();
+private:
+	UINT m_DBKeepDays;
+public:
+	afx_msg void OnBnClickedButton4();
+private:
+	UINT m_RecordingSum;
 };
