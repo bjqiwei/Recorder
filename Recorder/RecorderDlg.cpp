@@ -54,6 +54,7 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	, m_DBKeepDays(0)
 	, m_RecordingSum(0)
 	, m_DetailLog(FALSE)
+	, m_AutoBackup(0)
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
@@ -73,6 +74,7 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT3, m_DBKeepDays);
 	DDX_Text(pDX, IDC_EDIT4, m_RecordingSum);
 	DDX_Check(pDX, IDC_CHECK1, m_DetailLog);
+	DDX_Check(pDX, IDC_CHECK3, m_AutoBackup);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -84,6 +86,7 @@ BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON3, &CRecorderDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON4, &CRecorderDlg::OnBnClickedButton4)
 	ON_BN_CLICKED(IDC_CHECK1, &CRecorderDlg::OnBnClickedCheck1)
+	ON_BN_CLICKED(IDC_CHECK3, &CRecorderDlg::OnBnClickedCheck3)
 END_MESSAGE_MAP()
 
 
@@ -119,6 +122,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	m_KeepDays = ReadRegKeyDWORD("KeepDays");
 	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
+	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -784,5 +788,14 @@ void CRecorderDlg::OnBnClickedCheck1()
 	}
 
 	SetRegKey("DetailLog",m_DetailLog);
+	UpdateData(FALSE);
+}
+
+
+void CRecorderDlg::OnBnClickedCheck3()
+{
+	// TODO: Add your control notification handler code here
+	UpdateData(TRUE);
+	SetRegKey("AutoBackup",m_AutoBackup);
 	UpdateData(FALSE);
 }

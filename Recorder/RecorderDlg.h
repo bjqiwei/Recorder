@@ -110,4 +110,8 @@ private:
 	BOOL m_DetailLog;
 public:
 	afx_msg void OnBnClickedCheck1();
+private:
+	int m_AutoBackup;
+public:
+	afx_msg void OnBnClickedCheck3();
 };
