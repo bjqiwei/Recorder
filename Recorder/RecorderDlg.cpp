@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 #include <log4cplus/loggingmacros.h>
 #include <iostream>
+#include <math.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,7 +46,9 @@ static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};
 
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
-	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0)
+	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),freeCapacity(100),applyCapacity(50)
+	, m_strFileDir(_T(""))
+	, m_strDataBase(_T(""))
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
@@ -59,12 +62,16 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_DTP, m_ChList);
 	DDX_Control(pDX, IDC_RICHEDIT21, m_ctrCapacityView);
+	DDX_Text(pDX, IDC_EDIT1, m_strFileDir);
+	DDX_Text(pDX, IDC_EDIT_DATABASE, m_strDataBase);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_BUTTON1, &CRecorderDlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_BUTTON2, &CRecorderDlg::OnBnClickedButton2)
 END_MESSAGE_MAP()
 
 
@@ -95,7 +102,9 @@ BOOL CRecorderDlg::OnInitDialog()
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-	
+	m_strFileDir = ReadRegKey("FileDir");
+	m_strDataBase = ReadRegKey("DataBase");
+	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -393,7 +402,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
 						SYSTEMTIME st;
 						GetLocalTime(&st);
-						ChMap[nCic].szFileName.Format("d:\\test\\Rec_%d-%d-%d-%d.wav", nCic, st.wHour, st.wMinute, st.wSecond);
+						ChMap[nCic].szFileName.Format("%s\\Rec_%d-%d-%d-%d.wav", m_strFileDir, nCic, st.wHour, st.wMinute, st.wSecond);
 
 						if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 						{
@@ -588,30 +597,111 @@ void CRecorderDlg::OnDestroy()
 void CRecorderDlg::DrawCapacityView()
 {
 	CDC * dc = this->m_ctrCapacityView.GetDC();
-
+	const unsigned int radius = 60;
+	const double pi =3.141592;
 	CPen pen,*pOldPen;
 	CBrush brush,*pOldBrush;
 	COLORREF penColor = RGB(0xFF,0xFF,0xFF);
 	COLORREF freeColor = RGB(0xCC,0x33,0x99);
 	COLORREF applyColor = RGB(0x00,0x33,0x99);
-	pen.CreatePen(PS_SOLID,1,penColor);
+	pen.CreatePen(PS_NULL,0,penColor);
+	pOldPen = dc->SelectObject(&pen);  
+
 	brush.CreateSolidBrush(applyColor);
-
-	pOldPen = dc->SelectObject(&pen);         
 	pOldBrush = dc->SelectObject(&brush);
+	unsigned long sum = applyCapacity + freeCapacity;
+	sum = max(sum,1);
+	unsigned int nXRadial1 = radius*2;
+	unsigned int nYRadial1 = radius;
 
+	unsigned int nXRadial2 = radius + radius * cos(applyCapacity*360/sum*pi/180);
+	unsigned int nYRadial2 = radius - radius * sin(applyCapacity*360/sum*pi/180);
 
-	dc->Pie(0, 0, 120, 120, 120, 60, 0, 60); 
+	dc->Pie(0, 0, radius*2, radius*2, nXRadial1, nYRadial1, nXRadial2, nYRadial2); 
+	nXRadial1 = nXRadial2;
+	nYRadial1 = nYRadial2;
+	nXRadial2 = radius * 2;
+	nYRadial2 = radius;
 
 	brush.DeleteObject();
 	brush.CreateSolidBrush(freeColor);
 	dc->SelectObject(&brush);
 
-	dc->Pie(0, 0, 120, 120, 0,60,60,120); 
+	dc->Pie(0, 0, radius*2, radius*2, nXRadial1, nYRadial1, nXRadial2, nYRadial2); 
 	//Release GDI Object       
 	dc->SelectObject(pOldPen);         
 	dc->SelectObject(pOldBrush);
 	pen.DeleteObject();
 	brush.DeleteObject();
 	ReleaseDC(dc);
+}
+
+
+void CRecorderDlg::OnBnClickedButton1()
+{
+	// TODO: Add your control notification handler code here
+	
+	TCHAR szDir[MAX_PATH];
+	
+	BROWSEINFO bi;
+	ITEMIDLIST *pidl;
+
+	bi.hwndOwner = this->m_hWnd;
+	bi.pidlRoot = NULL;
+	bi.pszDisplayName = szDir;
+	bi.lpszTitle = "请选择目录";
+	bi.ulFlags = BIF_RETURNONLYFSDIRS;
+	bi.lpfn = NULL;
+	bi.lParam = 0;
+	bi.iImage = 0;
+
+	pidl = SHBrowseForFolder(&bi);
+	if(pidl == NULL)
+		return;
+	if(!SHGetPathFromIDList(pidl, szDir)) 
+		return;
+
+	m_strFileDir = szDir;
+	SetRegKey("FileDir",m_strFileDir);
+	UpdateData(FALSE);
+}
+
+void CRecorderDlg::SetRegKey(CString name, CString strValue)
+{
+	CRegKey shKey;
+
+	LONG lResult = shKey.Create(HKEY_LOCAL_MACHINE,"SoftWare\\Recorder");
+	if (lResult != ERROR_SUCCESS)
+	{
+		LOG4CPLUS_ERROR(log, _T("Create Recorder RegKey failed."));
+	}
+	else{
+		shKey.SetStringValue(name.GetBuffer(), strValue.GetBuffer(),REG_SZ);
+	}
+	return ;
+}
+CString CRecorderDlg::ReadRegKey(CString name)
+{
+	CRegKey shKey;
+	CString strValue;
+	LONG lResult = shKey.Open(HKEY_LOCAL_MACHINE,"SoftWare\\Recorder");
+	if (lResult != ERROR_SUCCESS)
+	{
+		LOG4CPLUS_ERROR(log, _T("Open Recorder RegKey failed."));
+	}
+	else{
+		ULONG dwLen;
+		shKey.QueryStringValue(name.GetBuffer(), strValue.GetBuffer(MAX_PATH),&dwLen);
+		strValue.ReleaseBuffer();
+	}
+	return strValue;
+}
+
+
+void CRecorderDlg::OnBnClickedButton2()
+{
+	// TODO: Add your control notification handler code here
+	CFileDialog
+	SetRegKey("DataBase",m_strDataBase);
+	UpdateData(FALSE);
 }

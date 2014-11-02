@@ -77,12 +77,22 @@ public:
 private:
 	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
 	int nMaxCh;					//Maximum number of the monitored circuits
+	unsigned long freeCapacity;
+	unsigned long applyCapacity;
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
+	void SetRegKey(CString name, CString value);
+	CString ReadRegKey(CString name);
 public:
 	afx_msg void OnDestroy();
 	CRichEditCtrl m_ctrCapacityView;
 
 	void DrawCapacityView();
+	afx_msg void OnBnClickedButton1();
+private:
+	CString m_strFileDir;
+public:
+	CString m_strDataBase;
+	afx_msg void OnBnClickedButton2();
 };
