@@ -9,6 +9,7 @@
 #include <log4cplus/loggingmacros.h>
 #include <iostream>
 #include <math.h>
+#include "oledb2.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -701,7 +702,9 @@ CString CRecorderDlg::ReadRegKey(CString name)
 void CRecorderDlg::OnBnClickedButton2()
 {
 	// TODO: Add your control notification handler code here
-	CFileDialog
+	COLEDBDataLink dl;
+	m_strDataBase = dl.Edit(m_strDataBase, this->m_hWnd);
+
 	SetRegKey("DataBase",m_strDataBase);
 	UpdateData(FALSE);
 }

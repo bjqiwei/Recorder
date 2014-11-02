@@ -108,6 +108,8 @@
     <None Include="res\Recorder.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ado2.h" />
+    <ClInclude Include="oledb2.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="RecorderDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -115,6 +117,8 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ado2.cpp" />
+    <ClCompile Include="oledb2.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="RecorderDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
