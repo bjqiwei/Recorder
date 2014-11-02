@@ -50,6 +50,7 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),freeCapacity(100),applyCapacity(50)
 	, m_strFileDir(_T(""))
 	, m_strDataBase(_T(""))
+	, m_KeepDays(0)
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
@@ -65,6 +66,7 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_RICHEDIT21, m_ctrCapacityView);
 	DDX_Text(pDX, IDC_EDIT1, m_strFileDir);
 	DDX_Text(pDX, IDC_EDIT_DATABASE, m_strDataBase);
+	DDX_Text(pDX, IDC_EDIT2, m_KeepDays);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -73,6 +75,7 @@ BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_BUTTON1, &CRecorderDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_BUTTON2, &CRecorderDlg::OnBnClickedButton2)
+	ON_BN_CLICKED(IDC_BUTTON3, &CRecorderDlg::OnBnClickedButton3)
 END_MESSAGE_MAP()
 
 
@@ -103,8 +106,9 @@ BOOL CRecorderDlg::OnInitDialog()
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
 	InitCircuitListCtrl();		//initialize list
-	m_strFileDir = ReadRegKey("FileDir");
-	m_strDataBase = ReadRegKey("DataBase");
+	m_strFileDir = ReadRegKeyString("FileDir");
+	m_strDataBase = ReadRegKeyString("DataBase");
+	m_KeepDays = ReadRegKeyDWORD("KeepDays");
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -681,7 +685,22 @@ void CRecorderDlg::SetRegKey(CString name, CString strValue)
 	}
 	return ;
 }
-CString CRecorderDlg::ReadRegKey(CString name)
+
+void CRecorderDlg::SetRegKey( CString name, DWORD value )
+{
+	CRegKey shKey;
+
+	LONG lResult = shKey.Create(HKEY_LOCAL_MACHINE,"SoftWare\\Recorder");
+	if (lResult != ERROR_SUCCESS)
+	{
+		LOG4CPLUS_ERROR(log, _T("Create Recorder RegKey failed."));
+	}
+	else{
+		shKey.SetDWORDValue(name.GetBuffer(), value);
+	}
+}
+
+CString CRecorderDlg::ReadRegKeyString(CString name)
 {
 	CRegKey shKey;
 	CString strValue;
@@ -707,4 +726,28 @@ void CRecorderDlg::OnBnClickedButton2()
 
 	SetRegKey("DataBase",m_strDataBase);
 	UpdateData(FALSE);
+}
+
+
+void CRecorderDlg::OnBnClickedButton3()
+{
+	// TODO: Add your control notification handler code here
+	UpdateData(TRUE);
+	SetRegKey("KeepDays",m_KeepDays);
+	UpdateData(FALSE);
+}
+
+DWORD CRecorderDlg::ReadRegKeyDWORD( CString name )
+{
+	CRegKey shKey;
+	DWORD dwValue = 360;
+	LONG lResult = shKey.Open(HKEY_LOCAL_MACHINE,"SoftWare\\Recorder");
+	if (lResult != ERROR_SUCCESS)
+	{
+		LOG4CPLUS_ERROR(log, _T("Open Recorder RegKey failed."));
+	}
+	else{
+		shKey.QueryDWORDValue(name.GetBuffer(), dwValue);
+	}
+	return dwValue;
 }

@@ -83,7 +83,9 @@ private:
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
 	void SetRegKey(CString name, CString value);
-	CString ReadRegKey(CString name);
+	void SetRegKey(CString name, DWORD value);
+	CString ReadRegKeyString(CString name);
+	DWORD ReadRegKeyDWORD(CString name);
 public:
 	afx_msg void OnDestroy();
 	CRichEditCtrl m_ctrCapacityView;
@@ -95,4 +97,8 @@ private:
 public:
 	CString m_strDataBase;
 	afx_msg void OnBnClickedButton2();
+private:
+	UINT m_KeepDays;
+public:
+	afx_msg void OnBnClickedButton3();
 };
