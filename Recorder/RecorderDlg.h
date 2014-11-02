@@ -107,4 +107,7 @@ public:
 	afx_msg void OnBnClickedButton4();
 private:
 	UINT m_RecordingSum;
+	BOOL m_DetailLog;
+public:
+	afx_msg void OnBnClickedCheck1();
 };
