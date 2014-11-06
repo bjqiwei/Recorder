@@ -8,6 +8,7 @@
 #include <string>
 #include <log4cplus/logger.h>
 #include "afxcmn.h"
+#include "DataBase.h"
 /////////////////////////////////////////////////////////////////////////////
 
 // CRecorderDlg ¶Ô»°¿ò
@@ -114,4 +115,6 @@ private:
 	int m_AutoBackup;
 public:
 	afx_msg void OnBnClickedCheck3();
+private:
+	DataBase m_sqlServerDB;
 };

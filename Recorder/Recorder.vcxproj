@@ -111,6 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ado2.h" />
+    <ClInclude Include="DataBase.h" />
     <ClInclude Include="oledb2.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="RecorderDlg.h" />
@@ -120,6 +121,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ado2.cpp" />
+    <ClCompile Include="DataBase.cpp" />
     <ClCompile Include="oledb2.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="RecorderDlg.cpp" />

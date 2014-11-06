@@ -119,10 +119,12 @@ BOOL CRecorderDlg::OnInitDialog()
 	InitCircuitListCtrl();		//initialize list
 	m_strFileDir = ReadRegKeyString("FileDir");
 	m_strDataBase = ReadRegKeyString("DataBase");
+	m_sqlServerDB.SetConnectionString(m_strDataBase);
 	m_KeepDays = ReadRegKeyDWORD("KeepDays");
 	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
 	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
+	m_sqlServerDB.startDataBaseThread();
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -610,6 +612,7 @@ void CRecorderDlg::OnDestroy()
 	LOG4CPLUS_INFO(log,_T("Application exit..."));
 	if(SsmCloseCti() == -1)
 		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
+	m_sqlServerDB.stopDataBaseThread();
 }
 
 
@@ -737,7 +740,7 @@ void CRecorderDlg::OnBnClickedButton2()
 	// TODO: Add your control notification handler code here
 	COLEDBDataLink dl;
 	m_strDataBase = dl.Edit(m_strDataBase, this->m_hWnd);
-
+	m_sqlServerDB.SetConnectionString(m_strDataBase);
 	SetRegKey("DataBase",m_strDataBase);
 	UpdateData(FALSE);
 }
