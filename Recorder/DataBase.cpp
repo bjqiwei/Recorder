@@ -67,7 +67,11 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 
 			if(!db->m_dataBase.IsOpen()){
 				LOG4CPLUS_TRACE(log, "Connecting database:" << db->m_strConnection);
-				db->m_dataBase.Open(db->m_strConnection);
+				if(db->m_dataBase.Open(db->m_strConnection)){
+					LOG4CPLUS_INFO(log, "Connected database:" << db->m_strConnection);
+				}else{
+					LOG4CPLUS_WARN(log, "Connecting Error database:" << db->m_strConnection);
+				}
 			}
 			Sleep(1000);
 
