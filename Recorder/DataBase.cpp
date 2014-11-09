@@ -61,11 +61,13 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 	DataBase *db = reinterpret_cast<DataBase*>(pParam);
 	while (db->IsRunning)
 	{
-
+		std::string sql;
 		try
 		{
 
 			if(!db->m_dataBase.IsOpen()){
+				/*db->m_dataBase.SetConnectionTimeout(30);
+				LOG4CPLUS_TRACE(log, "SetConnectionTimeout:30");*/
 				LOG4CPLUS_TRACE(log, "Connecting database:" << db->m_strConnection);
 				if(db->m_dataBase.Open(db->m_strConnection)){
 					LOG4CPLUS_INFO(log, "Connected database:" << db->m_strConnection);
@@ -73,20 +75,38 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 					LOG4CPLUS_WARN(log, "Connecting Error database:" << db->m_strConnection);
 				}
 			}
-			Sleep(1000);
+			else{
+				LOG4CPLUS_TRACE(log, "ge data from sql queue, timeout:60*1000ms");
+				if(db->m_sqlQueue.getData(sql,60*1000)){
+					LOG4CPLUS_TRACE(log, "get a sql:" << sql);
+					db->m_dataBase.Execute(_bstr_t(sql.c_str()));
+				}
+				else{
+					//db->addSql2Queue("select top 1 * from dbo.car;");
+					LOG4CPLUS_TRACE(log, "sql queue is empty.");
+				}
+			}
+			
 
 		}
-		catch (CMemoryException* e)
-		{
-			TCHAR   szError[1024];
-			e->GetErrorMessage(szError,1024);
-			LOG4CPLUS_ERROR(log, szError);
-		}
-		catch (CFileException* e)
-		{
-			TCHAR   szError[1024];
-			e->GetErrorMessage(szError,1024);
-			LOG4CPLUS_ERROR(log, e->m_strFileName << ":" << szError);
+	
+		catch(CADOException e){
+			LOG4CPLUS_ERROR(log, "ErrorCode:" << std::hex << e.GetError() << ",ErrorMsg:" << e.GetErrorMessage());
+			if (e.GetError() == 0x80004005) 
+			{
+				if(db->m_dataBase.IsOpen()){
+					LOG4CPLUS_INFO(log," close connect.");
+					db->m_dataBase.Close();
+				}
+				if(!sql.empty())
+				{
+					LOG4CPLUS_INFO(log," add the execute error sql:"<< sql << " to the sql Queue.");
+					db->addSql2Queue(sql);
+					sql.clear();
+				}
+				LOG4CPLUS_INFO(log, "sleep this thread 30*1000 ms.");
+				Sleep(30*1000);
+			}
 		}
 		catch (CException* e)
 		{
@@ -94,12 +114,9 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 			e->GetErrorMessage(szError,1024);
 			LOG4CPLUS_ERROR(log, szError);
 		}
-		catch(CADOException e){
-			LOG4CPLUS_ERROR(log, e.GetErrorMessage());
-		}
 		catch(...)
 		{
-			LOG4CPLUS_ERROR(log, "unknown.");
+			LOG4CPLUS_ERROR(log, "unknown exception.");
 		}
 	}
 	db->td.thread_hnd = NULL;
@@ -115,4 +132,9 @@ void DataBase::SetConnectionString(const CString lpstrConnection)
 CString DataBase::GetConnectionString()const
 {
 	return m_strConnection;
+}
+
+void DataBase::addSql2Queue(const std::string & sql)
+{
+	return m_sqlQueue.addData(sql);
 }

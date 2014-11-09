@@ -48,6 +48,9 @@
     <ClInclude Include="DataBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EventBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Recorder.cpp">

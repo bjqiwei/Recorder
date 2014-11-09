@@ -112,6 +112,7 @@
   <ItemGroup>
     <ClInclude Include="ado2.h" />
     <ClInclude Include="DataBase.h" />
+    <ClInclude Include="EventBuffer.h" />
     <ClInclude Include="oledb2.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="RecorderDlg.h" />

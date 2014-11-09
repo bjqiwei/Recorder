@@ -1,6 +1,7 @@
 #pragma once
 #include "ado2.h"
 #include <log4cplus/logger.h>
+#include "EventBuffer.h"
 
 struct thread_data {
 	HANDLE thread_hnd;
@@ -32,6 +33,7 @@ public:
 	CString GetConnectionString() const;
 	void startDataBaseThread();
 	void stopDataBaseThread();
+	void addSql2Queue(const std::string & sql);
 
 private:
 	CADODatabase m_dataBase;
@@ -39,6 +41,7 @@ private:
 	struct thread_data td;
 	log4cplus::Logger log;
 	CString m_strConnection;
+	EventBuffer<std::string> m_sqlQueue;
 
 };
 
