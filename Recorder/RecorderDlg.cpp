@@ -47,7 +47,7 @@ static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};
 
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
-	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),freeCapacity(100),applyCapacity(50)
+	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),m_freeCapacity(100),m_totalCapacity(50)
 	, m_strFileDir(_T(""))
 	, m_strDataBase(_T(""))
 	, m_KeepDays(0)
@@ -55,6 +55,7 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	, m_RecordingSum(0)
 	, m_DetailLog(FALSE)
 	, m_AutoBackup(0)
+	, m_strTotalSize(_T(""))
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
@@ -75,6 +76,7 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT4, m_RecordingSum);
 	DDX_Check(pDX, IDC_CHECK1, m_DetailLog);
 	DDX_Check(pDX, IDC_CHECK3, m_AutoBackup);
+	DDX_Text(pDX, IDC_EDIT_TOTALSIZE, m_strTotalSize);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -125,6 +127,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
 	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
 	m_sqlServerDB.startDataBaseThread();
+	checkDiskSize();
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -629,15 +632,14 @@ void CRecorderDlg::DrawCapacityView()
 	pen.CreatePen(PS_NULL,0,penColor);
 	pOldPen = dc->SelectObject(&pen);  
 
-	brush.CreateSolidBrush(applyColor);
+	brush.CreateSolidBrush(freeColor);
 	pOldBrush = dc->SelectObject(&brush);
-	unsigned long sum = applyCapacity + freeCapacity;
-	sum = max(sum,1);
+
 	unsigned int nXRadial1 = radius*2;
 	unsigned int nYRadial1 = radius;
 
-	unsigned int nXRadial2 = radius + radius * cos(applyCapacity*360/sum*pi/180);
-	unsigned int nYRadial2 = radius - radius * sin(applyCapacity*360/sum*pi/180);
+	unsigned int nXRadial2 = radius + radius * cos(m_freeCapacity*360/m_totalCapacity*pi/180);
+	unsigned int nYRadial2 = radius - radius * sin(m_freeCapacity*360/m_totalCapacity*pi/180);
 
 	dc->Pie(0, 0, radius*2, radius*2, nXRadial1, nYRadial1, nXRadial2, nYRadial2); 
 	nXRadial1 = nXRadial2;
@@ -646,7 +648,7 @@ void CRecorderDlg::DrawCapacityView()
 	nYRadial2 = radius;
 
 	brush.DeleteObject();
-	brush.CreateSolidBrush(freeColor);
+	brush.CreateSolidBrush(applyColor);
 	dc->SelectObject(&brush);
 
 	dc->Pie(0, 0, radius*2, radius*2, nXRadial1, nYRadial1, nXRadial2, nYRadial2); 
@@ -685,6 +687,7 @@ void CRecorderDlg::OnBnClickedButton1()
 
 	m_strFileDir = szDir;
 	SetRegKey("FileDir",m_strFileDir);
+	checkDiskSize();
 	UpdateData(FALSE);
 }
 
@@ -801,4 +804,25 @@ void CRecorderDlg::OnBnClickedCheck3()
 	UpdateData(TRUE);
 	SetRegKey("AutoBackup",m_AutoBackup);
 	UpdateData(FALSE);
+}
+
+
+void CRecorderDlg::checkDiskSize(void)
+{
+
+	CString TotalDiskSize, FreeDiskSize;
+	ULARGE_INTEGER lpuse;
+	ULARGE_INTEGER lptotal;
+	ULARGE_INTEGER lpfree;
+	GetDiskFreeSpaceEx(m_strFileDir,&lpuse,&lptotal,&lpfree);  
+
+	//得到DiskName盘符的的总容量、已用空间大小、剩余空间大小
+	m_freeCapacity = lpuse.QuadPart;
+	m_totalCapacity = lptotal.QuadPart;
+	LOG4CPLUS_DEBUG(log, "当前磁盘:" << m_strFileDir);
+	TotalDiskSize.Format("总容量:%4.2fGB",lptotal.QuadPart/1024.0/1024.0/1024.0);
+	m_strTotalSize = TotalDiskSize;
+	LOG4CPLUS_DEBUG(log, TotalDiskSize);
+	FreeDiskSize.Format("可用空间:%4.2fGB",lpuse.QuadPart/1024.0/1024.0/1024.0);
+	LOG4CPLUS_DEBUG(log, FreeDiskSize);
 }

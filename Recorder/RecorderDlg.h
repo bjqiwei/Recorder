@@ -78,8 +78,8 @@ public:
 private:
 	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
 	int nMaxCh;					//Maximum number of the monitored circuits
-	unsigned long freeCapacity;
-	unsigned long applyCapacity;
+	ULONGLONG m_freeCapacity;
+	ULONGLONG m_totalCapacity;
 	BOOL InitCtiBoard();			//Initialize board
 	void InitCircuitListCtrl();		//Initialize list
 	void UpdateCircuitListCtrl(unsigned int nIndex);	//Update list
@@ -117,4 +117,8 @@ public:
 	afx_msg void OnBnClickedCheck3();
 private:
 	DataBase m_sqlServerDB;
+public:
+	void checkDiskSize(void);
+private:
+	CString m_strTotalSize;
 };
