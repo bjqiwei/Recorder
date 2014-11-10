@@ -84,6 +84,8 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 				else{
 					//db->addSql2Queue("select top 1 * from dbo.car;");
 					LOG4CPLUS_TRACE(log, "sql queue is empty.");
+					std::string trySQL="select count(id)as nid from sysobjects where xtype='u'";
+					db->m_dataBase.Execute(_bstr_t(trySQL.c_str()));
 				}
 			}
 			
