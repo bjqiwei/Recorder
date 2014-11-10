@@ -56,12 +56,14 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	, m_DetailLog(FALSE)
 	, m_AutoBackup(0)
 	, m_strTotalSize(_T(""))
+	, m_strFreeSize(_T(""))
 {
 	//m_nRecFormat = 2;
 	m_nCallFnMode = 0;
 
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_strApplySize = _T("");
 }
 
 void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
@@ -77,6 +79,8 @@ void CRecorderDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK1, m_DetailLog);
 	DDX_Check(pDX, IDC_CHECK3, m_AutoBackup);
 	DDX_Text(pDX, IDC_EDIT_TOTALSIZE, m_strTotalSize);
+	DDX_Text(pDX, IDC_EDIT7, m_strFreeSize);
+	DDX_Text(pDX, IDC_EDIT6, m_strApplySize);
 }
 
 BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
@@ -629,6 +633,22 @@ void CRecorderDlg::DrawCapacityView()
 	COLORREF penColor = RGB(0xFF,0xFF,0xFF);
 	COLORREF freeColor = RGB(0xCC,0x33,0x99);
 	COLORREF applyColor = RGB(0x00,0x33,0x99);
+
+	CRect rect;
+	CWnd *pWnd = NULL;
+	CDC *pDC = NULL;
+	pWnd = GetDlgItem(IDC_STATIC_APPLY); 
+	pDC = pWnd->GetDC();
+	pWnd->GetClientRect(&rect);
+	FillRect(pDC->GetSafeHdc(),&rect,CBrush(applyColor));
+	ReleaseDC(pDC);
+
+	pWnd = GetDlgItem(IDC_STATIC_FREE); 
+	pDC = pWnd->GetDC();
+	pWnd->GetClientRect(&rect);
+	FillRect(pDC->GetSafeHdc(),&rect,CBrush(freeColor));
+	ReleaseDC(pDC);
+	
 	pen.CreatePen(PS_NULL,0,penColor);
 	pOldPen = dc->SelectObject(&pen);  
 
@@ -810,7 +830,7 @@ void CRecorderDlg::OnBnClickedCheck3()
 void CRecorderDlg::checkDiskSize(void)
 {
 
-	CString TotalDiskSize, FreeDiskSize;
+	CString TotalDiskSize, FreeDiskSize, ApplySize;
 	ULARGE_INTEGER lpuse;
 	ULARGE_INTEGER lptotal;
 	ULARGE_INTEGER lpfree;
@@ -820,9 +840,16 @@ void CRecorderDlg::checkDiskSize(void)
 	m_freeCapacity = lpuse.QuadPart;
 	m_totalCapacity = lptotal.QuadPart;
 	LOG4CPLUS_DEBUG(log, "当前磁盘:" << m_strFileDir);
+
 	TotalDiskSize.Format("总容量:%4.2fGB",lptotal.QuadPart/1024.0/1024.0/1024.0);
 	m_strTotalSize = TotalDiskSize;
 	LOG4CPLUS_DEBUG(log, TotalDiskSize);
-	FreeDiskSize.Format("可用空间:%4.2fGB",lpuse.QuadPart/1024.0/1024.0/1024.0);
+
+	FreeDiskSize.Format("可用:%4.2fGB",lpuse.QuadPart/1024.0/1024.0/1024.0);
+	m_strFreeSize = FreeDiskSize;
 	LOG4CPLUS_DEBUG(log, FreeDiskSize);
+
+	ApplySize.Format("已用:%4.2fGB",(lptotal.QuadPart - lpuse.QuadPart)/1024.0/1024.0/1024.0);
+	m_strApplySize = ApplySize;
+	LOG4CPLUS_DEBUG(log, ApplySize);
 }

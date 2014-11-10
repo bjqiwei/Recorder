@@ -121,4 +121,7 @@ public:
 	void checkDiskSize(void);
 private:
 	CString m_strTotalSize;
+public:
+	CString m_strFreeSize;
+	CString m_strApplySize;
 };
