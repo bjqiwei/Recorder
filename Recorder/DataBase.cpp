@@ -126,7 +126,7 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 	return 0;
 }
 
-void DataBase::SetConnectionString(const CString lpstrConnection)
+void DataBase::SetConnectionString(const CString &lpstrConnection)
 {
 	m_strConnection = lpstrConnection;
 }

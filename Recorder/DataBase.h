@@ -29,7 +29,7 @@ public:
 	DataBase(void);
 	virtual ~DataBase(void);
 	volatile bool IsRunning;
-	void SetConnectionString(const CString lpstrConnection);
+	void SetConnectionString(const CString &lpstrConnection);
 	CString GetConnectionString() const;
 	void startDataBaseThread();
 	void stopDataBaseThread();
