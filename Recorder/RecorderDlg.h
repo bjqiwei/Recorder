@@ -46,6 +46,7 @@ typedef struct tagCIC_STRUCT
 	unsigned int nRecordTimes;  //Record Times 
 	CTime tStartTime;// record start time
 	CString szFileName; // record file name
+	CString sql;
 }CIC_STRUCT;
 
 class CRecorderDlg : public CDialogEx

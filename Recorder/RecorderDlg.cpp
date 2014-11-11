@@ -430,7 +430,15 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
 						SYSTEMTIME st;
 						GetLocalTime(&st);
-						ChMap[nCic].szFileName.Format("%s\\Rec_%d-%d-%d-%d.wav", m_strFileDir, nCic, st.wHour, st.wMinute, st.wSecond);
+						ChMap[nCic].szFileName.Format("%s\\%4d%2d%2d%2d%2d%2d_%s_%s.wav", m_strFileDir, st.wYear, st.wMonth, st.wDay, 
+							st.wHour, st.wMinute, st.wSecond,
+							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
+						
+						if(ChMap[nCic].szCallerId.Compare("40012345678")){
+							ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
+						}else{
+							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+						}
 
 						if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 						{
@@ -439,6 +447,10 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							else{
 								ChMap[nCic].tStartTime = CTime::GetCurrentTime();
 								ChMap[nCic].nRecordTimes++;
+								ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
+								ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S.%MS") + "','" + ChMap[nCic].szFileName + "','0') ";
+								m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+								ChMap[nCic].sql.ReleaseBuffer();
 							}
 						}
 						else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
