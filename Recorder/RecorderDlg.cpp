@@ -30,15 +30,15 @@ enum{
 	ChCaller,
 	ChCallee,
 	//ChInDTMF,
-	ChDTMF,
+	//ChDTMF,
 	ChTimes,
 	ChStartTime,
 	ChFileName,
 };
 #define  ColumnNumber (ChFileName + 1)
-static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 "DTMF",	"录音次数",		"开始时间",	 "录音文件名称"};
-static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 "DTMF",    "Times",		"StartTime",   "FileName"};
-static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth,  DTMFWidth,RecordTimesWidth,StartTimeWidth,FileNameWidth};
+static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 /*"DTMF",*/	"录音次数",		"开始时间",	 "录音文件名称"};
+static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
+static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, /* DTMFWidth,*/RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
 static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};		
 // CRecorderDlg 对话框
@@ -286,7 +286,7 @@ void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 	m_ChList.SetItemText(nIndex, ChState, ChMap[nIndex].szState);
 	m_ChList.SetItemText(nIndex, ChCaller, ChMap[nIndex].szCallerId);
 	m_ChList.SetItemText(nIndex, ChCallee, ChMap[nIndex].szCalleeId);
-	m_ChList.SetItemText(nIndex, ChDTMF, ChMap[nIndex].szDtmf);
+	//m_ChList.SetItemText(nIndex, ChDTMF, ChMap[nIndex].szDtmf);
 	//m_CicList.SetItemText(nIndex, ChOutDTMF, CicState[nIndex].szCallOutDtmf);
 	strNewData.Format("%d", ChMap[nIndex].nRecordTimes);
 	m_ChList.SetItemText(nIndex, ChTimes, strNewData);
