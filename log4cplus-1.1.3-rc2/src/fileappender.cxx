@@ -902,7 +902,7 @@ DailyRollingFileAppender::getFilename(const Time& t) const
     };
 
     tstring result (filename);
-    result += LOG4CPLUS_TEXT(".");
+    result += LOG4CPLUS_TEXT("_");
     result += t.getFormattedTime(pattern, false);
 	result += LOG4CPLUS_TEXT(".log");
     return result;
