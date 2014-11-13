@@ -470,14 +470,15 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			if(nCic != -1)
 			{
 				cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
+				LOG4CPLUS_INFO(log, "Ch:" << nCic << " newDTMF:" << cNewDtmf);
 				ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
 			}
 			UpdateCircuitListCtrl(nCic);
 		}
 #pragma endregion E_CHG_RcvDTMF
-#pragma region Hook
 		else if (nEventCode == E_CHG_HookState)
 		{
+#pragma region E_CHG_HookState
 			nCh = wParam;
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " E_CHG_HookState");
 			nNewState = lParam;
@@ -522,7 +523,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			UpdateCircuitListCtrl(nCh);
 		}
-#pragma endregion Hook
+#pragma endregion E_CHG_HookState
 #pragma region E_CHG_ChState
 		else if (nEventCode == E_CHG_ChState)
 		{
@@ -861,6 +862,7 @@ bool CRecorderDlg::StartRecording(unsigned long nIndex){
 	TCHAR szFile[MAX_PATH];
 	lstrcpy(szFile,ChMap[nIndex].szFileName.GetBuffer(ChMap[nIndex].szFileName.GetLength()));
 	ChMap[nIndex].szFileName.ReleaseBuffer();
+	LOG4CPLUS_TRACE(log, "Ch:" << nIndex << ", record file:" << szFile);
 	if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 	{
 		if(SpyRecToFile(nIndex, ChMap[nIndex].wRecDirection, szFile, -1, 0L, -1, -1, 0) == -1)
@@ -945,6 +947,9 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 std::string CRecorderDlg::GetShStateName(unsigned int nState){
 	switch(nState){
 	case S_SPY_STANDBY:	return "S_SPY_STANDBY";
+	case E_CHG_RcvDTMF:	return "E_CHG_RcvDTMF";
+	case S_SPY_RINGING: return "S_SPY_RINGING";
+	case S_SPY_TALKING:	return "S_SPY_TALKING";
 	default:
 		{
 			std::stringstream oss;
