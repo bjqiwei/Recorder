@@ -65,6 +65,8 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+	HICON m_hIconOffhook;
+	HICON m_hIconOnhook;
 	log4cplus::Logger log;
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -73,6 +75,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	CListCtrl m_ChList;
+	CImageList m_ImageList;
 	//int		m_nRecFormat;
 	int		m_nCallFnMode;
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);

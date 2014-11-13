@@ -106,6 +106,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+    <None Include="res\OffHook.ico" />
+    <None Include="res\OnHook.ico" />
     <None Include="res\Recorder.ico" />
     <None Include="res\Recorder.rc2" />
   </ItemGroup>

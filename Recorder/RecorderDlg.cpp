@@ -63,6 +63,8 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_hIconOffhook = AfxGetApp()->LoadIcon(IDI_ICON_OFFHOOK);
+	m_hIconOnhook = AfxGetApp()->LoadIcon(IDI_ICON_ONHOOK);
 	m_strApplySize = _T("");
 }
 
@@ -260,6 +262,11 @@ void CRecorderDlg::InitCircuitListCtrl()
 	dwExtendedStyle |= LVS_EX_GRIDLINES; 
 	m_ChList.SetExtendedStyle(dwExtendedStyle);
 
+	m_ImageList.Create(16,16,ILC_COLOR16,1,1);
+	m_ImageList.Add(m_hIconOnhook);
+	m_ImageList.Add(m_hIconOffhook);
+	m_ChList.SetImageList(&m_ImageList,LVSIL_SMALL);
+
 	LV_COLUMN lvc;
 	lvc.mask =  LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM ;
 
@@ -283,6 +290,23 @@ void CRecorderDlg::InitCircuitListCtrl()
 void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 {
 	CString strNewData;
+	LVITEM lvItem={0};
+	lvItem.mask = LVIF_IMAGE|LVIF_TEXT|LVIF_STATE;  //ÎÄ×Ö¡¢Í¼Æ¬¡¢×´Ì¬  
+	lvItem.iItem = nIndex;
+	lvItem.iSubItem = Channel;    //×ÓÁÐºÅ  
+	if ( ChMap[nIndex].nState == CIRCUIT_TALKING)
+	{
+		lvItem.iImage = 0;  //Í¼Æ¬Ë÷ÒýºÅ(µÚÒ»·ùÍ¼Æ¬)  
+		
+	}else
+	{
+		lvItem.iImage = 1;    //Í¼Æ¬Ë÷ÒýºÅ(µÚ2·ùÍ¼Æ¬)   
+	}
+	CString str;
+	str.Format("%d",nIndex);
+	m_ChList.SetItem(&lvItem);
+	m_ChList.SetItemText(nIndex,Channel,str);
+
 	m_ChList.SetItemText(nIndex, ChState, ChMap[nIndex].szState);
 	m_ChList.SetItemText(nIndex, ChCaller, ChMap[nIndex].szCallerId);
 	m_ChList.SetItemText(nIndex, ChCallee, ChMap[nIndex].szCalleeId);
