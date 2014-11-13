@@ -34,7 +34,7 @@ enum RECORD_DIRECTION
 
 typedef struct tagCIC_STRUCT
 {
-	int  nState;				//State of monitored circuits
+	CIRCUIT_STATE  nState;				//State of monitored circuits
 	CString szState;
 	CString szCallerId;		//Calling party number
 	CString szCalleeId;		//Called party number
@@ -128,4 +128,6 @@ private:
 public:
 	CString m_strFreeSize;
 	CString m_strApplySize;
+	long StopRecording(unsigned long nIndex);
+	void SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState);
 };

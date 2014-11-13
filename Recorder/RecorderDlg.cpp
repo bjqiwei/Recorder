@@ -236,8 +236,7 @@ BOOL CRecorderDlg::InitCtiBoard()
 
 	for(int i = 0; i < nMaxCh; i++)
 	{
-		ChMap[i].nState = CIRCUIT_IDLE;
-		ChMap[i].szState = StateName[CIRCUIT_IDLE];
+		SetChannelState(i, CIRCUIT_IDLE);
 		ChMap[i].wRecDirection = MIX_RECORD;	    //mix-record
 		ChMap[i].nCallInCh = -1;	
 		ChMap[i].nCallOutCh = -1;
@@ -357,44 +356,17 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						LOG4CPLUS_DEBUG(log, "Ch:" << nCic <<  " State:S_SPY_STANDBY");
 						if(ChMap[nCic].nState == CIRCUIT_TALKING)
 						{
-							//Call the function with circuit number as its parameter
-							if(m_nCallFnMode == 0)				
-							{
-								//stop recording
-								if(SpyStopRecToFile(nCic) == -1)
-									LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
-							}
-							//Call the function with channel number as its parameter
-							else
-							{
-								if(ChMap[nCic].wRecDirection == CALL_IN_RECORD)
-								{
-									if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)
-										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-								}
-								else if(ChMap[nCic].wRecDirection == CALL_OUT_RECORD)
-								{
-									if(SsmStopRecToFile(ChMap[nCic].nCallOutCh) == -1)
-										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-								}
-								else
-								{
-									if(SsmSetRecMixer(ChMap[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
-										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmSetRecMixer"));
-									if(SsmStopLinkFrom(ChMap[nCic].nCallOutCh, ChMap[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
-										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopLinkFrom"));
-									if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)		//Stop recording
-										LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-								}
-							}
+							LOG4CPLUS_TRACE(log,"Stop recording:" << nCic);
+							StopRecording(nCic);
 						}
-						ChMap[nCic].nState = CIRCUIT_IDLE;
-						ChMap[nCic].szState = StateName[CIRCUIT_IDLE];
+						SetChannelState(nCic,CIRCUIT_IDLE);
 						ChMap[nCic].szDtmf.Empty();
 						ChMap[nCic].szCalleeId.Empty();
 						ChMap[nCic].szCallerId.Empty();
 						ChMap[nCic].szFileName.Empty();
 						//CicState[nCic].szCallOutDtmf.Empty();
+						m_RecordingSum--;
+						UpdateData(FALSE);
 					}
 					break;
 #pragma endregion 空闲
@@ -403,10 +375,8 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				case S_SPY_RCVPHONUM:
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RCVPHONUM");
-						if(ChMap[nCic].nState == CIRCUIT_IDLE)
-						{
-							ChMap[nCic].nState = CIRCUIT_RCV_PHONUM;
-							ChMap[nCic].szState = StateName[CIRCUIT_RCV_PHONUM];
+						if(ChMap[nCic].nState == CIRCUIT_IDLE){
+							SetChannelState(nCic, CIRCUIT_RCV_PHONUM);
 						}
 					}
 					break;	
@@ -416,8 +386,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				case S_SPY_RINGING:
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RINGING");
-						ChMap[nCic].nState = CIRCUIT_RINGING;
-						ChMap[nCic].szState = StateName[CIRCUIT_RINGING];
+						SetChannelState(nCic, CIRCUIT_RINGING);
 
 						if(SpyGetCallerId(nCic, ChMap[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallerId"));
@@ -447,8 +416,11 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
-						ChMap[nCic].nState = CIRCUIT_TALKING;
-						ChMap[nCic].szState = StateName[CIRCUIT_TALKING];
+						SetChannelState(nCic, CIRCUIT_TALKING);
+						if(ChMap[nCic].szCallerId.Compare("4008001100")){
+						   ChMap[nCic].szCalleeId.ReleaseBuffer();
+						   break;
+						  } 
 
 						//Start recording
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
@@ -460,12 +432,12 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							st.wHour, st.wMinute, st.wSecond,
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 						
-						//根据主被叫号码判断录音方向
-						if(ChMap[nCic].szCallerId.Compare("40012345678")){
-							ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
-						}else{
-							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-						}
+					 //根据主被叫号码判断录音方向
+					  if(!ChMap[nCic].szCallerId.Compare("4008001100")){
+					   ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
+					  }else{
+					   ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+					  } 
 
 						if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
 						{
@@ -479,6 +451,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 								m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
 								ChMap[nCic].sql.ReleaseBuffer();
 								m_RecordingSum++;
+								UpdateData(FALSE);
 							}
 						}
 						else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
@@ -576,13 +549,13 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_STANDBY:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_STANDBY");
-					ChMap[nCic].nState = CIRCUIT_IDLE;
-					ChMap[nCic].szState = StateName[CIRCUIT_IDLE];
-					ChMap[nCic].szDtmf.Empty();
-					ChMap[nCic].szCalleeId.Empty();
-					ChMap[nCic].szCallerId.Empty();
-					ChMap[nCic].szFileName.Empty();
+					SetChannelState(nCh, CIRCUIT_IDLE);
+					ChMap[nCh].szDtmf.Empty();
+					ChMap[nCh].szCalleeId.Empty();
+					ChMap[nCh].szCallerId.Empty();
+					ChMap[nCh].szFileName.Empty();
 					m_RecordingSum--;
+					UpdateData(FALSE);
 
 				}
 				break;
@@ -592,8 +565,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_PICKUPED:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_PICKUPED");
-					ChMap[nCic].nState = STATE_PICKUP;
-					ChMap[nCic].szState = StateName[STATE_PICKUP];
+					SetChannelState(nCh, STATE_PICKUP);
 				}
 				break;
 #pragma endregion off hook
@@ -601,8 +573,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_TALKING:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_TALKING");
-					ChMap[nCic].nState = CIRCUIT_TALKING;
-					ChMap[nCic].szState = StateName[CIRCUIT_TALKING];
+					SetChannelState(nCh, CIRCUIT_TALKING);
 				}
 				break;
 #pragma endregion S_CALL_TALKING
@@ -897,4 +868,46 @@ void CRecorderDlg::checkDiskSize(void)
 		LOG4CPLUS_ERROR(log, "query " << m_strFileDir << " error.");
 	}
 	DrawCapacityView();
+}
+
+
+long CRecorderDlg::StopRecording(unsigned long nCic)
+{
+	//Call the function with circuit number as its parameter
+	if(m_nCallFnMode == 0)				
+	{
+		//stop recording
+		if(SpyStopRecToFile(nCic) == -1)
+			LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
+	}
+	//Call the function with channel number as its parameter
+	else
+	{
+		if(ChMap[nCic].wRecDirection == CALL_IN_RECORD)
+		{
+			if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)
+				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
+		}
+		else if(ChMap[nCic].wRecDirection == CALL_OUT_RECORD)
+		{
+			if(SsmStopRecToFile(ChMap[nCic].nCallOutCh) == -1)
+				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
+		}
+		else
+		{
+			if(SsmSetRecMixer(ChMap[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
+				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmSetRecMixer"));
+			if(SsmStopLinkFrom(ChMap[nCic].nCallOutCh, ChMap[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
+				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopLinkFrom"));
+			if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)		//Stop recording
+				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
+		}
+	}
+	return 0;
+}
+
+void CRecorderDlg::SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState)
+{
+	ChMap[nIndex].nState = newState;
+	ChMap[nIndex].szState = StateName[newState];
 }
