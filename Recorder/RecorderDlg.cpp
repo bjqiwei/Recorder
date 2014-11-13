@@ -358,15 +358,15 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						{
 							LOG4CPLUS_TRACE(log,"Stop recording:" << nCic);
 							StopRecording(nCic);
+							SetChannelState(nCic,CIRCUIT_IDLE);
+							ChMap[nCic].szDtmf.Empty();
+							ChMap[nCic].szCalleeId.Empty();
+							ChMap[nCic].szCallerId.Empty();
+							ChMap[nCic].szFileName.Empty();
+							//CicState[nCic].szCallOutDtmf.Empty();
+							m_RecordingSum--;
+							UpdateData(FALSE);
 						}
-						SetChannelState(nCic,CIRCUIT_IDLE);
-						ChMap[nCic].szDtmf.Empty();
-						ChMap[nCic].szCalleeId.Empty();
-						ChMap[nCic].szCallerId.Empty();
-						ChMap[nCic].szFileName.Empty();
-						//CicState[nCic].szCallOutDtmf.Empty();
-						m_RecordingSum--;
-						UpdateData(FALSE);
 					}
 					break;
 #pragma endregion ¿ÕÏÐ
@@ -543,9 +543,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					ChMap[nCh].szCalleeId.Empty();
 					ChMap[nCh].szCallerId.Empty();
 					ChMap[nCh].szFileName.Empty();
-					m_RecordingSum--;
-					UpdateData(FALSE);
-
 				}
 				break;
 #pragma endregion on hook
