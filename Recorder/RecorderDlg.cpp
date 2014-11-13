@@ -454,6 +454,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 								ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S.%MS") + "','" + ChMap[nCic].szFileName + "','0') ";
 								m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
 								ChMap[nCic].sql.ReleaseBuffer();
+								m_RecordingSum++;
 							}
 						}
 						else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
@@ -557,6 +558,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					ChMap[nCic].szCalleeId.Empty();
 					ChMap[nCic].szCallerId.Empty();
 					ChMap[nCic].szFileName.Empty();
+					m_RecordingSum--;
 
 				}
 				break;
