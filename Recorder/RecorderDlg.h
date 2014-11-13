@@ -129,7 +129,8 @@ private:
 public:
 	CString m_strFreeSize;
 	CString m_strApplySize;
-	long StopRecording(unsigned long nIndex);
+	bool StopRecording(unsigned long nIndex);
+	bool StartRecording(unsigned long nIndex);
 	void SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState);
 	void GetCaller(unsigned long nIndex);
 	void GetCallee(unsigned long nIndex);
