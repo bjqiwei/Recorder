@@ -20,6 +20,7 @@ enum CIRCUIT_STATE
 	CIRCUIT_RCV_PHONUM,		//State of receiving phone number
 	CIRCUIT_RINGING,		//State of ringing
 	CIRCUIT_TALKING,		//State of talking
+	STATE_RECORDING,		//Â¼Òô
 	STATE_PICKUP,			//Õª»ú
 };
 
@@ -133,4 +134,6 @@ public:
 	void GetCaller(unsigned long nIndex);
 	void GetCallee(unsigned long nIndex);
 	void GetCallerAndCallee(unsigned long nIndex);
+	static std::string GetShEventName(unsigned int nEvent);
+	static std::string GetShStateName(unsigned int nState);
 };
