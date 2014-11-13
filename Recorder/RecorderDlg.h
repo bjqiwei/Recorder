@@ -130,4 +130,7 @@ public:
 	CString m_strApplySize;
 	long StopRecording(unsigned long nIndex);
 	void SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState);
+	void GetCaller(unsigned long nIndex);
+	void GetCallee(unsigned long nIndex);
+	void GetCallerAndCallee(unsigned long nIndex);
 };

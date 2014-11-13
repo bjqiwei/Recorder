@@ -387,13 +387,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic <<  " State:S_SPY_RINGING");
 						SetChannelState(nCic, CIRCUIT_RINGING);
-
-						if(SpyGetCallerId(nCic, ChMap[nCic].szCallerId.GetBuffer(20)) == -1)//Get calling party number
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallerId"));
-						ChMap[nCic].szCallerId.ReleaseBuffer();
-						if(SpyGetCalleeId(nCic, ChMap[nCic].szCalleeId.GetBuffer(20)) == -1)//Get called party number
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCalleeId"));
-						ChMap[nCic].szCalleeId.ReleaseBuffer();
+						GetCallerAndCallee(nCic);
 					}
 					break;
 #pragma endregion ÕñÁå
@@ -404,12 +398,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						LOG4CPLUS_DEBUG(log,"Ch:" << nCic << " State:S_SPY_TALKING");
 						if(ChMap[nCic].nState == CIRCUIT_RCV_PHONUM)
 						{
-							if(SpyGetCallerId(nCic, ChMap[nCic].szCallerId.GetBuffer(20)) == -1)
-								LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCallerId"));
-							ChMap[nCic].szCallerId.ReleaseBuffer();
-							if(SpyGetCalleeId(nCic, ChMap[nCic].szCalleeId.GetBuffer(20)) == -1)
-								LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCalleeId"));
-							ChMap[nCic].szCalleeId.ReleaseBuffer();
+							GetCallerAndCallee(nCic);
 						}
 						if((ChMap[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallInCh"));
@@ -910,4 +899,20 @@ void CRecorderDlg::SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState)
 {
 	ChMap[nIndex].nState = newState;
 	ChMap[nIndex].szState = StateName[newState];
+}
+
+void CRecorderDlg::GetCaller(unsigned long nIndex){
+	if(SpyGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)//Get calling party number
+		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCallerId"));
+	ChMap[nIndex].szCallerId.ReleaseBuffer();
+}
+void CRecorderDlg::GetCallee(unsigned long nIndex){
+	if(SpyGetCalleeId(nIndex, ChMap[nIndex].szCalleeId.GetBuffer(20)) == -1)//Get called party number
+		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCalleeId"));
+	ChMap[nIndex].szCalleeId.ReleaseBuffer();
+}
+void CRecorderDlg::GetCallerAndCallee(unsigned long nIndex)
+{
+	GetCaller(nIndex);
+	GetCallee(nIndex);
 }
