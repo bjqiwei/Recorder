@@ -47,7 +47,7 @@ static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","摘机"};
 
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
-	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),m_freeCapacity(100),m_totalCapacity(50)
+	: CDialogEx(CRecorderDlg::IDD, pParent),nMaxCh(0),m_freeCapacity(0),m_totalCapacity(1)
 	, m_strFileDir(_T(""))
 	, m_strDataBase(_T(""))
 	, m_KeepDays(0)
@@ -475,7 +475,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 								ChMap[nCic].tStartTime = CTime::GetCurrentTime();
 								ChMap[nCic].nRecordTimes++;
 								ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
-								ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S.%MS") + "','" + ChMap[nCic].szFileName + "','0') ";
+								ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
 								m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
 								ChMap[nCic].sql.ReleaseBuffer();
 								m_RecordingSum++;
@@ -875,22 +875,26 @@ void CRecorderDlg::checkDiskSize(void)
 	ULARGE_INTEGER lpuse;
 	ULARGE_INTEGER lptotal;
 	ULARGE_INTEGER lpfree;
-	GetDiskFreeSpaceEx(m_strFileDir,&lpuse,&lptotal,&lpfree);  
+	if(GetDiskFreeSpaceEx(m_strFileDir,&lpuse,&lptotal,&lpfree))
+	{ 
+		//得到DiskName盘符的的总容量、已用空间大小、剩余空间大小
+		m_freeCapacity = lpuse.QuadPart;
+		m_totalCapacity = lptotal.QuadPart;
+		LOG4CPLUS_DEBUG(log, "当前磁盘:" << m_strFileDir);
 
-	//得到DiskName盘符的的总容量、已用空间大小、剩余空间大小
-	m_freeCapacity = lpuse.QuadPart;
-	m_totalCapacity = lptotal.QuadPart;
-	LOG4CPLUS_DEBUG(log, "当前磁盘:" << m_strFileDir);
+		TotalDiskSize.Format("总容量:%4.2fGB",lptotal.QuadPart/1024.0/1024.0/1024.0);
+		m_strTotalSize = TotalDiskSize;
+		LOG4CPLUS_DEBUG(log, TotalDiskSize);
 
-	TotalDiskSize.Format("总容量:%4.2fGB",lptotal.QuadPart/1024.0/1024.0/1024.0);
-	m_strTotalSize = TotalDiskSize;
-	LOG4CPLUS_DEBUG(log, TotalDiskSize);
+		FreeDiskSize.Format("可用:%4.2fGB",lpuse.QuadPart/1024.0/1024.0/1024.0);
+		m_strFreeSize = FreeDiskSize;
+		LOG4CPLUS_DEBUG(log, FreeDiskSize);
 
-	FreeDiskSize.Format("可用:%4.2fGB",lpuse.QuadPart/1024.0/1024.0/1024.0);
-	m_strFreeSize = FreeDiskSize;
-	LOG4CPLUS_DEBUG(log, FreeDiskSize);
-
-	ApplySize.Format("已用:%4.2fGB",(lptotal.QuadPart - lpuse.QuadPart)/1024.0/1024.0/1024.0);
-	m_strApplySize = ApplySize;
-	LOG4CPLUS_DEBUG(log, ApplySize);
+		ApplySize.Format("已用:%4.2fGB",(lptotal.QuadPart - lpuse.QuadPart)/1024.0/1024.0/1024.0);
+		m_strApplySize = ApplySize;
+		LOG4CPLUS_DEBUG(log, ApplySize);
+	}else{
+		LOG4CPLUS_ERROR(log, "query " << m_strFileDir << " error.");
+	}
+	DrawCapacityView();
 }
