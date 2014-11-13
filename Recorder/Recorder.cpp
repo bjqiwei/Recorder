@@ -78,6 +78,7 @@ BOOL CRecorderApp::InitInstance()
 	//logFileName.append(_T(".log"));
 
 	logFile = logFilePath + logFileName;
+	logFile = "d:\\log\\LOG";
 	log4cplus::initialize();
 	log4cplus::SharedAppenderPtr _append(new log4cplus::DailyRollingFileAppender(logFile, 
 		log4cplus::DailyRollingFileSchedule::HOURLY,
