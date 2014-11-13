@@ -430,10 +430,13 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
 						SYSTEMTIME st;
 						GetLocalTime(&st);
-						ChMap[nCic].szFileName.Format("%s\\%4d%2d%2d%2d%2d%2d_%s_%s.wav", m_strFileDir, st.wYear, st.wMonth, st.wDay, 
+						ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
+							st.wYear, st.wMonth, st.wDay,
+							st.wYear, st.wMonth, st.wDay, 
 							st.wHour, st.wMinute, st.wSecond,
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 						
+						//根据主被叫号码判断录音方向
 						if(ChMap[nCic].szCallerId.Compare("40012345678")){
 							ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
 						}else{
