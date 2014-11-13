@@ -643,8 +643,8 @@ void CRecorderDlg::DrawCapacityView()
 	CPen pen,*pOldPen;
 	CBrush brush,*pOldBrush;
 	COLORREF penColor = RGB(0xFF,0xFF,0xFF);
-	COLORREF freeColor = RGB(0xCC,0x33,0x99);
-	COLORREF applyColor = RGB(0x00,0x33,0x99);
+	COLORREF freeColor = RGB(0x00,0x33,0x99);
+	COLORREF applyColor = RGB(0xCC,0x33,0x99);
 
 	CRect rect;
 	CWnd *pWnd = NULL;
