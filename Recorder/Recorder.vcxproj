@@ -113,8 +113,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ado2.h" />
+    <ClInclude Include="CEventBuffer.h" />
+    <ClInclude Include="Csemaphore.h" />
     <ClInclude Include="DataBase.h" />
-    <ClInclude Include="EventBuffer.h" />
+    <ClInclude Include="lock.h" />
     <ClInclude Include="oledb2.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="RecorderDlg.h" />

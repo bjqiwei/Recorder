@@ -54,7 +54,13 @@
     <ClInclude Include="DataBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EventBuffer.h">
+    <ClInclude Include="CEventBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Csemaphore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

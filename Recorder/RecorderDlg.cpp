@@ -633,6 +633,7 @@ void CRecorderDlg::DrawCapacityView()
 	pen.DeleteObject();
 	brush.DeleteObject();
 	ReleaseDC(dc);
+	UpdateData(FALSE);
 }
 
 

@@ -1,7 +1,7 @@
 #pragma once
 #include "ado2.h"
 #include <log4cplus/logger.h>
-#include "EventBuffer.h"
+#include "CEventBuffer.h"
 
 struct thread_data {
 	HANDLE thread_hnd;
@@ -41,7 +41,7 @@ private:
 	struct thread_data td;
 	log4cplus::Logger log;
 	CString m_strConnection;
-	EventBuffer<std::string> m_sqlQueue;
+	helper::CEventBuffer<std::string> m_sqlQueue;
 
 };
 

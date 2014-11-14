@@ -138,5 +138,5 @@ CString DataBase::GetConnectionString()const
 
 void DataBase::addSql2Queue(const std::string & sql)
 {
-	return m_sqlQueue.addData(sql);
+	m_sqlQueue.addData(sql);
 }
