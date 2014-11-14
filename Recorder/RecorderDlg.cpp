@@ -358,6 +358,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							StopRecording(nCic);
 							//CicState[nCic].szCallOutDtmf.Empty();
 							m_RecordingSum--;
+							checkDiskSize();
 							UpdateData(FALSE);
 						}
 						SetChannelState(nCic,CIRCUIT_IDLE);
