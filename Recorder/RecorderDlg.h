@@ -135,6 +135,7 @@ public:
 	void GetCaller(unsigned long nIndex);
 	void GetCallee(unsigned long nIndex);
 	void GetCallerAndCallee(unsigned long nIndex);
+	bool CreateMultipleDirectory(const CString& szPath);
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
 };
