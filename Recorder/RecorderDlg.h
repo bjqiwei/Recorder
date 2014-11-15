@@ -9,6 +9,7 @@
 #include <log4cplus/logger.h>
 #include "afxcmn.h"
 #include "DataBase.h"
+#include "CSystemTray.h"
 /////////////////////////////////////////////////////////////////////////////
 
 // CRecorderDlg ¶Ô»°¿ò
@@ -138,4 +139,11 @@ public:
 	bool CreateMultipleDirectory(const CString& szPath);
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
+#define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
+	CSystemTray m_TrayIcon; 
+	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnShow();
+	afx_msg void OnExit();
 };

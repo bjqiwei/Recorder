@@ -115,6 +115,7 @@
     <ClInclude Include="ado2.h" />
     <ClInclude Include="CEventBuffer.h" />
     <ClInclude Include="Csemaphore.h" />
+    <ClInclude Include="CSystemTray.h" />
     <ClInclude Include="DataBase.h" />
     <ClInclude Include="lock.h" />
     <ClInclude Include="oledb2.h" />
@@ -126,6 +127,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ado2.cpp" />
+    <ClCompile Include="CSystemTray.cpp" />
     <ClCompile Include="DataBase.cpp" />
     <ClCompile Include="oledb2.cpp" />
     <ClCompile Include="Recorder.cpp" />

@@ -96,6 +96,11 @@ BEGIN_MESSAGE_MAP(CRecorderDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON4, &CRecorderDlg::OnBnClickedButton4)
 	ON_BN_CLICKED(IDC_CHECK1, &CRecorderDlg::OnBnClickedCheck1)
 	ON_BN_CLICKED(IDC_CHECK3, &CRecorderDlg::OnBnClickedCheck3)
+	ON_MESSAGE(WM_ICON_NOTIFY, OnTrayNotification)
+	ON_WM_SYSCOMMAND()
+	ON_WM_CREATE()
+	ON_COMMAND(ID_SHOW, &CRecorderDlg::OnShow)
+	ON_COMMAND(ID_EXIT, &CRecorderDlg::OnExit)
 END_MESSAGE_MAP()
 
 
@@ -1000,4 +1005,77 @@ bool CRecorderDlg::CreateMultipleDirectory(const CString& szPath)
 	}
 
 	return bSuccess;
+}
+
+
+void CRecorderDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	// TODO: Add your message handler code here and/or call default
+	if(nID==SC_MINIMIZE || nID == SC_CLOSE)
+	{
+		ShowWindow(SW_SHOWMINIMIZED);
+		ShowWindow(SW_HIDE);
+	}
+	else
+		CDialogEx::OnSysCommand(nID, lParam);
+}
+
+
+int CRecorderDlg::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CDialogEx::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	// TODO:  Add your specialized creation code here
+	if (!m_TrayIcon.Create(this, WM_ICON_NOTIFY, _T("录音程序"),this->m_hIcon, IDR_TRAY_MENU))
+		return -1;
+	return 0;
+}
+
+LRESULT CRecorderDlg::OnTrayNotification(WPARAM wParam, LPARAM lParam)
+{
+	if (wParam != IDR_TRAY_MENU)
+		return 0L;
+
+	CMenu menu, *pSubMenu;
+	if (LOWORD(lParam) == WM_RBUTTONUP)
+	{ 
+		CPoint pos;
+		GetCursorPos(&pos);
+		if (!menu.LoadMenu(IDR_TRAY_MENU)) return 0;
+
+		if (!(pSubMenu=menu.GetSubMenu(0))) return 0;
+
+		::SetMenuDefaultItem(pSubMenu->m_hMenu, 3, TRUE);
+		SetForegroundWindow(); 
+		pSubMenu->TrackPopupMenu(TPM_RIGHTALIGN | TPM_BOTTOMALIGN | TPM_RIGHTBUTTON, pos.x, pos.y,
+			this);
+		menu.DestroyMenu();
+	}
+	else if (LOWORD(lParam) == WM_LBUTTONDBLCLK) 
+	{
+		if (!menu.LoadMenu(IDR_TRAY_MENU)) return 0;
+		if (!(pSubMenu = menu.GetSubMenu(0))) return 0;
+
+		SetForegroundWindow();
+		//激活第显示菜单项
+		SendMessage(WM_COMMAND,ID_SHOW, 0);
+		menu.DestroyMenu();
+
+	}
+		return 0;
+}
+
+void CRecorderDlg::OnShow()
+{
+	// TODO: Add your command handler code here
+	ShowWindow(SW_SHOW);
+	ShowWindow(SW_RESTORE);
+}
+
+
+void CRecorderDlg::OnExit()
+{
+	// TODO: Add your command handler code here
+	this->EndDialog(0);
 }
