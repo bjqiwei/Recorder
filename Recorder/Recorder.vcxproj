@@ -114,6 +114,7 @@
   <ItemGroup>
     <ClInclude Include="ado2.h" />
     <ClInclude Include="CEventBuffer.h" />
+    <ClInclude Include="CPUID.h" />
     <ClInclude Include="Csemaphore.h" />
     <ClInclude Include="CSystemTray.h" />
     <ClInclude Include="DataBase.h" />

@@ -7,6 +7,11 @@
 #include "RecorderDlg.h"
 #include <log4cplus/logger.h>
 #include <log4cplus/fileappender.h>
+#include "CPUID.h"
+#include <sstream>
+#include <iomanip>
+#include <log4cplus/loggingmacros.h>
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -81,7 +86,7 @@ BOOL CRecorderApp::InitInstance()
 	logFile = "d:\\log\\LOG";
 	log4cplus::initialize();
 	log4cplus::SharedAppenderPtr _append(new log4cplus::DailyRollingFileAppender(logFile, 
-		log4cplus::DailyRollingFileSchedule::HOURLY,
+		log4cplus::HOURLY,
 		true,24));
 
 	_append->setName(logFileName);
@@ -93,20 +98,37 @@ BOOL CRecorderApp::InitInstance()
 
 	root.addAppender(_append);
 	root.setLogLevel(log4cplus::ALL_LOG_LEVEL);
-	CRecorderDlg dlg;
-	m_pMainWnd = &dlg;
-	INT_PTR nResponse = dlg.DoModal();
-	if (nResponse == IDOK)
-	{
-		// TODO: 在此放置处理何时用
-		//  “确定”来关闭对话框的代码
-	}
-	else if (nResponse == IDCANCEL)
-	{
-		// TODO: 在此放置处理何时用
-		//  “取消”来关闭对话框的代码
-	}
 
+	CPUID cpu;
+	SerialNumber serial;
+	cpu.GetSerialNumber(serial);
+	std::ostringstream oss ;
+	for (int i=0; serial.nibble[i] >0 ;++i)
+	{
+		oss << std::uppercase << std::hex <<std::setw(8)<< std::setfill('0')<< serial.nibble[i];
+	}
+	std::string strSerial = oss.str();
+	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:" << strSerial);
+
+	if ("BFEBFBFF000306A9" == strSerial)
+	{
+	
+		CRecorderDlg dlg;
+		m_pMainWnd = &dlg;
+		INT_PTR nResponse = dlg.DoModal();
+		if (nResponse == IDOK)
+		{
+			// TODO: 在此放置处理何时用
+			//  “确定”来关闭对话框的代码
+		}
+		else if (nResponse == IDCANCEL)
+		{
+			// TODO: 在此放置处理何时用
+			//  “取消”来关闭对话框的代码
+		}
+	}else{
+		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"CPU Serial verification failed.");
+	}
 	// 删除上面创建的 shell 管理器。
 	if (pShellManager != NULL)
 	{
