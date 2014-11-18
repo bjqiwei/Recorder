@@ -47,6 +47,7 @@ typedef struct tagCIC_STRUCT
 	int  nCallOutCh;			//Outgoing channel
 	unsigned int nRecordTimes;  //Record Times 
 	CTime tStartTime;// record start time
+	CTime tEndTime;// record end time
 	CString szFileName; // record file name
 	CString sql;
 }CIC_STRUCT;

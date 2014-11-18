@@ -108,9 +108,9 @@ BOOL CRecorderApp::InitInstance()
 		oss << std::uppercase << std::hex <<std::setw(8)<< std::setfill('0')<< serial.nibble[i];
 	}
 	std::string strSerial = oss.str();
-	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:" << strSerial);
+	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:DDAB04" << strSerial);
 
-	if ("BFEBFBFF000306A9" == strSerial)
+	if ("BFEBFBFF000306A97FBAE3FF" == strSerial)
 	{
 	
 		CRecorderDlg dlg;
@@ -127,7 +127,7 @@ BOOL CRecorderApp::InitInstance()
 			//  “取消”来关闭对话框的代码
 		}
 	}else{
-		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"CPU Serial verification failed.");
+		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"Error Info serial");
 	}
 	// 删除上面创建的 shell 管理器。
 	if (pShellManager != NULL)

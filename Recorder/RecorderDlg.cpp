@@ -362,6 +362,12 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_TRACE(log,"Stop recording:" << nCic);
 							StopRecording(nCic);
 							//CicState[nCic].szCallOutDtmf.Empty();
+							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+							ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							ChMap[nCic].sql.ReleaseBuffer();
+
 							m_RecordingSum--;
 							checkDiskSize();
 							UpdateData(FALSE);
@@ -406,11 +412,12 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
 						SetChannelState(nCic, CIRCUIT_TALKING);
+						/*
 						if(ChMap[nCic].szCallerId.Compare("4008001100")){
 						   ChMap[nCic].szCalleeId.ReleaseBuffer();
 						   LOG4CPLUS_INFO(log, "主叫号码判断不通过。");
 						   break;
-						  } 
+						  } */
 
 						//Start recording
 						//Record file name + Monitored circuit number + Time(hour-minute-second)
