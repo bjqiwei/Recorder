@@ -184,9 +184,10 @@ public:
 
 		serial.nibble[0] = cpuinfo[3];
 		serial.nibble[1] = cpuinfo[0];
+		serial.nibble[2] = cpuinfo[2];
 		Executecpuid(3); // 执行cpuid，参数为 eax = 3
 		//memcpy(&serial.nibble[0], &cpuinfo[2], 8); // ecx 和 edx为低位的4个WORD.n
-		serial.nibble[2] = cpuinfo[3];
+		serial.nibble[3] = cpuinfo[3];
 		serial.nibble[4] = cpuinfo[2];
 		return true;
 	}
