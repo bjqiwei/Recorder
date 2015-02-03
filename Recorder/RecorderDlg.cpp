@@ -223,8 +223,8 @@ BOOL CRecorderDlg::InitCtiBoard()
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		CErrMsg.ReleaseBuffer();
+		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		return FALSE;
 	}
 
@@ -232,9 +232,9 @@ BOOL CRecorderDlg::InitCtiBoard()
 	//		   that of boards specified in the configuration file
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
 	{
-		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message	
-		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
+		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message
 		CErrMsg.ReleaseBuffer();
+		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		return FALSE;
 	}
 
@@ -699,7 +699,7 @@ void CRecorderDlg::SetRegKey(CString name, CString strValue)
 		LOG4CPLUS_ERROR(log, _T("Create Recorder RegKey failed."));
 	}
 	else{
-		shKey.SetStringValue(name.GetBuffer(), strValue.GetBuffer(),REG_SZ);
+		shKey.SetStringValue(name, strValue,REG_SZ);
 	}
 	return ;
 }
@@ -714,7 +714,7 @@ void CRecorderDlg::SetRegKey( CString name, DWORD value )
 		LOG4CPLUS_ERROR(log, _T("Create Recorder RegKey failed."));
 	}
 	else{
-		shKey.SetDWORDValue(name.GetBuffer(), value);
+		shKey.SetDWORDValue(name, value);
 	}
 }
 
@@ -765,7 +765,7 @@ DWORD CRecorderDlg::ReadRegKeyDWORD( CString name )
 		LOG4CPLUS_ERROR(log, _T("Open Recorder RegKey failed."));
 	}
 	else{
-		shKey.QueryDWORDValue(name.GetBuffer(), dwValue);
+		shKey.QueryDWORDValue(name, dwValue);
 	}
 	return dwValue;
 }
@@ -884,7 +884,7 @@ bool CRecorderDlg::StopRecording(unsigned long nCic)
 bool CRecorderDlg::StartRecording(unsigned long nIndex){
 	TCHAR szFile[MAX_PATH];
 	CString szDir = ChMap[nIndex].szFileName;
-	lstrcpy(szFile,szDir.GetBuffer(szDir.GetLength()));
+	lstrcpy(szFile,szDir.GetBuffer());
 	szDir.ReleaseBuffer();
 	szDir = szDir.Left(szDir.ReverseFind('\\'));
 	CreateMultipleDirectory(szDir);
