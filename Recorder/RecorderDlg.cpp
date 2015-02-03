@@ -197,9 +197,18 @@ BOOL CRecorderDlg::InitCtiBoard()
 		LOG4CPLUS_ERROR(log, _T("Open ShCti RegKey failed."));
 	}
 	else{
-		ULONG dwLen;
-		shKey.QueryStringValue("AppPath", szCurPath.GetBuffer(256),&dwLen);
+		ULONG dwLen = MAX_PATH;
+		LONG ret = shKey.QueryStringValue("AppPath", szCurPath.GetBuffer(dwLen),&dwLen);
 		szCurPath.ReleaseBuffer();
+		if(ret != ERROR_SUCCESS){
+			LOG4CPLUS_ERROR(log,"Read  AppPath Error:" << ret);
+		}
+
+		LOG4CPLUS_DEBUG(log,"ShCti AppPath:" << szCurPath.GetBuffer());
+		if(szCurPath.IsEmpty()){
+			szCurPath = "C:\\ShCti\\";
+		}
+		LOG4CPLUS_DEBUG(log,"ShCti AppPath:" << szCurPath.GetBuffer());
 		szShIndex = szCurPath;
 		szShConfig = szCurPath;
 	}
@@ -719,8 +728,8 @@ CString CRecorderDlg::ReadRegKeyString(CString name)
 		LOG4CPLUS_ERROR(log, _T("Open Recorder RegKey failed."));
 	}
 	else{
-		ULONG dwLen;
-		shKey.QueryStringValue(name.GetBuffer(), strValue.GetBuffer(MAX_PATH),&dwLen);
+		ULONG dwLen = MAX_PATH;
+		shKey.QueryStringValue(name, strValue.GetBuffer(dwLen),&dwLen);
 		strValue.ReleaseBuffer();
 	}
 	return strValue;
