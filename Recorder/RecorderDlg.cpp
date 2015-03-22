@@ -138,7 +138,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
 	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
-	m_sqlServerDB.startDataBaseThread();
+		// sql wrb m_sqlServerDB.startDataBaseThread();
 	checkDiskSize();
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -371,11 +371,11 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_TRACE(log,"Stop recording:" << nCic);
 							StopRecording(nCic);
 							//CicState[nCic].szCallOutDtmf.Empty();
-							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-							ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							ChMap[nCic].sql.ReleaseBuffer();
+							//ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+							//ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+							//ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+							//m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							//ChMap[nCic].sql.ReleaseBuffer();
 
 							m_RecordingSum--;
 							checkDiskSize();
@@ -421,6 +421,26 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
 						SetChannelState(nCic, CIRCUIT_TALKING);
+						//添加录音
+						 CTime t = CTime::GetCurrentTime(); //获取系统日期
+					 /*
+						if(t.GetYear()>2016) //获取年份
+						{
+							if(t.GetMonth()>3)//获取月份
+							{
+								break;
+							}
+						}*/
+						//根据主被叫号码判断录音方向  83023240
+						if(ChMap[nCic].szCallerId=="10106789"||ChMap[nCic].szCallerId=="4008201111"){
+							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
+							//ChMap[nCic].szCallerId="83023240";
+							//ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+						}else{
+							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+							// ChMap[nCic].szCalleeId.ReleaseBuffer();
+							//break;
+						} 
 						/*
 						if(ChMap[nCic].szCallerId.Compare("4008001100")){
 						   ChMap[nCic].szCalleeId.ReleaseBuffer();
@@ -437,21 +457,16 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							st.wYear, st.wMonth, st.wDay, 
 							st.wHour, st.wMinute, st.wSecond,
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
-						
-						 //根据主被叫号码判断录音方向
-						if(!ChMap[nCic].szCallerId.Compare("4008001100")){
-						   ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
-						}else{
-						   ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-						} 
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
 							SetChannelState(nCic, STATE_RECORDING);
 							ChMap[nCic].tStartTime = CTime::GetCurrentTime();
 							ChMap[nCic].nRecordTimes++;
+							//sql=INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)VALUES
+							//( '83023240','9013608365552','','2015/1/7 10:01:08','D:\RecordWav\QX150100\2015\01\07\Trunk\20150107100108_83023240_013608365552.wav','0') 
 							ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
 							ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							// sql wrb m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
 							ChMap[nCic].sql.ReleaseBuffer();
 							m_RecordingSum++;
 							UpdateData(FALSE);
