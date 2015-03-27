@@ -40,7 +40,7 @@ BOOL CJetEngine::CompactDatabase(CString strDatabaseSource, CString strDatabaseD
 	{
 		::CoInitialize(NULL);
 		IJetEnginePtr jet(__uuidof(JetEngine));		
-		HRESULT hr = jet->CompactDatabase(_bstr_t(strDatabaseSource.GetBuffer(0)), _bstr_t(strDatabaseDestination.GetBuffer(0)));
+		HRESULT hr = jet->CompactDatabase(_bstr_t(strDatabaseSource.GetBuffer()), _bstr_t(strDatabaseDestination.GetBuffer()));
 		jet.Release();
 		::CoUninitialize();
 		return hr == S_OK;
