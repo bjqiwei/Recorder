@@ -361,14 +361,14 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						if(ChMap[nCic].nState == STATE_RECORDING)
 						{
-							LOG4CPLUS_TRACE(log,"Ch:" << nCic << "Stop recording:");
+							LOG4CPLUS_TRACE(log,"Ch:" << nCic << " Stop recording:");
 							StopRecording(nCic);
 							//CicState[nCic].szCallOutDtmf.Empty();
-							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-							ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							//ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+							//ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+							//ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+							//m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
 							m_RecordingSum--;
 							checkDiskSize();
 							UpdateData(FALSE);
@@ -413,6 +413,28 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
 						SetChannelState(nCic, CIRCUIT_TALKING);
+						//添加录音
+						 CTime t = CTime::GetCurrentTime(); //获取系统日期
+					 
+						if(t.GetYear()>2015) //获取年份
+						{
+							if(t.GetMonth()>10)//获取月份
+							{
+								break;
+							}
+						}
+						//根据主被叫号码判断录音方向  83023240
+						if(ChMap[nCic].szCallerId=="83023240"||ChMap[nCic].szCallerId==""){
+							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
+
+							if(ChMap[nCic].szCallerId==""){
+							  ChMap[nCic].szCallerId="83023240";
+							}
+							//ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+						}else{
+							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+							//break;
+						} 
 						/*
 						if(ChMap[nCic].szCallerId.Compare("4008001100")){
 						   ChMap[nCic].szCalleeId.ReleaseBuffer();
@@ -430,12 +452,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							st.wHour, st.wMinute, st.wSecond,
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 						
-						 //根据主被叫号码判断录音方向
-						if(!ChMap[nCic].szCallerId.Compare("4008001100")){
-						   ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
-						}else{
-						   ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-						} 
+							
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
 							SetChannelState(nCic, STATE_RECORDING);
