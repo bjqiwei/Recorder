@@ -138,6 +138,7 @@ public:
 	void GetCallee(unsigned long nIndex);
 	void GetCallerAndCallee(unsigned long nIndex);
 	bool CreateMultipleDirectory(const CString& szPath);
+	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
 #define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
