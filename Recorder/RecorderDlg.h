@@ -50,6 +50,8 @@ typedef struct tagCIC_STRUCT
 	CTime tEndTime;// record end time
 	CString szFileName; // record file name
 	CString sql;
+	int nChType;
+	bool bIgnoreLineVoltage;
 }CIC_STRUCT;
 
 class CRecorderDlg : public CDialogEx
