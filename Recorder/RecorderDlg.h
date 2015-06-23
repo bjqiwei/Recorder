@@ -59,6 +59,14 @@ enum CH_TYPE
 	CH_TYPE_IPA = 26,//	IPA通道，即SynIPR数据包解析通
 
 };
+
+enum Control			//recording working mode
+{   
+	VOICE_CTRL,			//voice-control mode
+	VOLTAGE_CTRL,		//voltage-control mode
+	DTMF_CTRL			//code-control mode
+};
+
 typedef struct tagCH_STRUCT
 {
 	CH_STATE  nState;				//State of monitored channel
@@ -76,6 +84,7 @@ typedef struct tagCH_STRUCT
 	CString szFileName; // record file name
 	CString sql;
 	int nChType;
+	int	CtrlState;		//recording working mode
 	bool bIgnoreLineVoltage;
 }CH_STRUCT;
 

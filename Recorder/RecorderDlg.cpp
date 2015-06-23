@@ -266,6 +266,7 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].nRecordTimes = 0;
 		ChMap[i].tStartTime = CTime::GetCurrentTime();
 		ChMap[i].nChType = SsmGetChType(i);
+		ChMap[i].CtrlState	= VOLTAGE_CTRL; 
 		if (ChMap[i].nChType == CH_TYPE_ANALOG_RECORD)
 		{
 			int nResult = SsmGetIgnoreLineVoltage(i);
@@ -585,13 +586,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 		}
 #pragma endregion E_CHG_ChState
-#pragma region E_SYS_BargeIn
-		else if (nEventCode == E_SYS_BargeIn)
-		{
-			INT32 nCic = MySpyChToCic(wParam);
-			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_SYS_BargeIn");
-		}
-#pragma endregion E_SYS_BargeIn
 #pragma region E_SYS_NoSound
 		else if (nEventCode == E_SYS_NoSound)
 		{
@@ -606,59 +600,41 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		}
 #pragma endregion E_CHG_PcmLinkStatus
 #pragma region E_SYS_BargeIn
-		else if (nEventCode == E_SYS_BargeIn)//BargeIn event is detected 
+		else if (nEventCode == E_SYS_BargeIn && lParam == 1)//BargeIn event is detected 
 		{
+			LOG4CPLUS_DEBUG(log,"Ch:" << wParam << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 			int nCh = wParam; //wParam: number of channel output the event 
-			if((ChMap[nCh].nState == CH_IDLE || ChMap[nCh].nState == CH_PICKUP )&& (lParam == 1))
-			{					
-				SYSTEMTIME st;
-				GetLocalTime(&st);
-				ChMap[nCh].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
-					st.wYear, st.wMonth, st.wDay,
-					st.wYear, st.wMonth, st.wDay, 
-					st.wHour, st.wMinute, st.wSecond,
-					ChMap[nCh].szCallerId, ChMap[nCh].szCalleeId);
-
-
-				LOG4CPLUS_INFO(log, "Ch:" <<  nCh << " StartRecording.");
-				if(StartRecording(nCh)){
-					SetChannelState(nCh, CH_RECORDING);
-					ChMap[nCh].tStartTime = CTime::GetCurrentTime();
-					ChMap[nCh].nRecordTimes++;
-					ChMap[nCh].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
-					ChMap[nCh].sql += "VALUES ( '" + ChMap[nCh].szCallerId + "','9" + ChMap[nCh].szCalleeId + "','','" + ChMap[nCh].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
-					m_sqlServerDB.addSql2Queue(ChMap[nCh].sql.GetBuffer());
-					LOG4CPLUS_TRACE(log, "Ch:" << nCh << " addSql2Queue:" << ChMap[nCh].sql.GetBuffer());
-					m_RecordingSum++;
-					UpdateData(FALSE);
-				}			
+			if(ChMap[nCh].bIgnoreLineVoltage)	//ignore voltage-detecting
+			{
+				if(ChMap[nCh].nState == CH_IDLE)
+				{
+					if((ChMap[nCh].CtrlState == VOICE_CTRL))
+					{
+						StartRecording(nCh);
+					}
+				}
 			}
+			else
+			{
+				if(ChMap[nCh].nState == CH_PICKUP)
+				{
+					if((ChMap[nCh].CtrlState == VOICE_CTRL))
+					{
+						StartRecording(nCh);
+					}
+				}
+			}			
 		}
 #pragma endregion E_SYS_BargeIn
 #pragma region E_SYS_NoSound
 		if (nEventCode == E_SYS_NoSound)
 		{
-
+			LOG4CPLUS_DEBUG(log,"Ch:" << wParam << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 			int nCh = wParam; //wParam: number of channel output the event 
-			if(ChMap[nCh].nState == CH_RECORDING)
+			if (ChMap[nCh].bIgnoreLineVoltage && ChMap[nCh].CtrlState == VOICE_CTRL)
 			{
-				LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording:");
 				StopRecording(nCh);
-				//CicState[nCic].szCallOutDtmf.Empty();
-				//ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-				//ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-				//ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-				//m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-				//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-				m_RecordingSum--;
-				checkDiskSize();
-				UpdateData(FALSE);
 			}
-			SetChannelState(nCh,CH_IDLE);
-			ChMap[nCh].szDtmf.Empty();
-			ChMap[nCh].szCalleeId.Empty();
-			ChMap[nCh].szCallerId.Empty();
-			ChMap[nCh].szFileName.Empty();
 		}
 #pragma endregion E_SYS_NoSound
 		else
@@ -1063,6 +1039,8 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	case S_SPY_RCVPHONUM:	return "S_SPY_RCVPHONUM";
 	case S_SPY_RINGING:		return "S_SPY_RINGING";
 	case S_SPY_TALKING:		return "S_SPY_TALKING";
+	case E_SYS_BargeIn:		return "E_SYS_BargeIn";
+	case E_SYS_NoSound:		return "E_SYS_NoSound";
 	default:
 		{
 			std::stringstream oss;
