@@ -23,6 +23,7 @@ enum CH_STATE
 	CH_TALKING,		//State of talking
 	CH_RECORDING,		//Â¼Òô
 	CH_PICKUP,			//Õª»ú
+	CH_OFFLINE,			//¶ÏÏß
 };
 
 
