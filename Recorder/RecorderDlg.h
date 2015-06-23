@@ -15,14 +15,14 @@
 // CRecorderDlg 对话框
 #define MAX_CH 1000		//Maximum number of the monitored circuits
 //User-defined circuit status
-enum CIRCUIT_STATE
+enum CH_STATE
 {
-	CIRCUIT_IDLE,			//Idle state
-	CIRCUIT_RCV_PHONUM,		//State of receiving phone number
-	CIRCUIT_RINGING,		//State of ringing
-	CIRCUIT_TALKING,		//State of talking
-	STATE_RECORDING,		//录音
-	STATE_PICKUP,			//摘机
+	CH_IDLE,			//Idle state
+	CH_RCV_PHONUM,		//State of receiving phone number
+	CH_RINGING,		//State of ringing
+	CH_TALKING,		//State of talking
+	CH_RECORDING,		//录音
+	CH_PICKUP,			//摘机
 };
 
 
@@ -33,10 +33,35 @@ enum RECORD_DIRECTION
 	MIX_RECORD			//Mix-record of incoming/outgoing call 
 };
 
-
-typedef struct tagCIC_STRUCT
+enum CH_TYPE
 {
-	CIRCUIT_STATE  nState;				//State of monitored circuits
+	CH_TYPE_ERROR = -1,//	调用失败
+	CH_TYPE_ANALOG_TRUNK = 0,//	模拟中继线通道
+	CH_TYPE_AGENT = 2,//坐席通道
+	CH_TYPE_ANALOG_RECORD = 3,//	模拟中继线录音通道
+	CH_TYPE_SS1 = 4,//	SS1通道
+	CH_TYPE_TUP = 6,//	TUP通道
+	CH_TYPE_ISDN_ISUP = 7,//	ISDN通道（用户侧）
+	CH_TYPE_ISDN = 8,//	ISDN通道（网络侧）
+	CH_TYPE_FAX = 9,//	传真资源通道
+	CH_TYPE_MAGENT = 10,//	磁石通道
+	CH_TYPE_SS7_ISUP = 11,//	ISUP通道（中国SS7信令ISUP）
+	CH_TYPE_E1_RECORD = 12,//	数字电话线录音通道
+	CH_TYPE_EM = 13,//	Channel Bank的EM通道
+	CH_TYPE_CRACK = 14,//	变声通道
+	CH_TYPE_SIP = 16,//	SIP通道
+	CH_TYPE_IP = 17,//	IP资源卡通道
+	CH_TYPE_DASS2 = 19,//	DASS2通道
+	CH_TYPE_NOMODULE = 20,//	SHT系列板卡未安装业务模块的通道
+	CH_TYPE_EM_CONTROL = 21,//	EM控制通道
+	CH_TYPE_EM_VOICE = 22,//	EM语音通道
+	CH_TYPE_IPR_RECORD = 25, //	IPR通道，即SynIPR录音通道
+	CH_TYPE_IPA = 26,//	IPA通道，即SynIPR数据包解析通
+
+};
+typedef struct tagCH_STRUCT
+{
+	CH_STATE  nState;				//State of monitored channel
 	CString szState;
 	CString szCallerId;		//Calling party number
 	CString szCalleeId;		//Called party number
@@ -52,7 +77,7 @@ typedef struct tagCIC_STRUCT
 	CString sql;
 	int nChType;
 	bool bIgnoreLineVoltage;
-}CIC_STRUCT;
+}CH_STRUCT;
 
 class CRecorderDlg : public CDialogEx
 {
@@ -85,8 +110,8 @@ public:
 	int		m_nCallFnMode;
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 private:
-	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
-	int nMaxCh;					//Maximum number of the monitored circuits
+	CH_STRUCT ChMap[MAX_CH];	//Monitored circuits
+	int nMaxCh;					//Maximum number of the monitored channel
 	ULONGLONG m_freeCapacity;
 	ULONGLONG m_totalCapacity;
 	BOOL InitCtiBoard();			//Initialize board
@@ -135,7 +160,7 @@ public:
 	CString m_strApplySize;
 	bool StopRecording(unsigned long nIndex);
 	bool StartRecording(unsigned long nIndex);
-	void SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState);
+	void SetChannelState(unsigned long nIndex, CH_STATE newState);
 	void GetCaller(unsigned long nIndex);
 	void GetCallee(unsigned long nIndex);
 	void GetCallerAndCallee(unsigned long nIndex);

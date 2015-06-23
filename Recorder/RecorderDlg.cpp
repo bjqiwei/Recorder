@@ -126,19 +126,25 @@ BOOL CRecorderDlg::OnInitDialog()
 	EVENT_SET_INFO EventSet;		
 	EventSet.dwWorkMode = EVENT_MESSAGE;	
 	EventSet.lpHandlerParam = this->GetSafeHwnd();	
+
 	if(SsmSetEvent(-1, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent"));
 	if(SsmSetEvent(E_CHG_SpyState, -1, TRUE, &EventSet) == -1)
 		LOG4CPLUS_ERROR(log, _T("Fail to call SsmSetEvent when setting E_CHG_SpyState"));
+
 	InitCircuitListCtrl();		//initialize list
+
 	m_strFileDir = ReadRegKeyString("FileDir");
 	m_strDataBase = ReadRegKeyString("DataBase");
 	m_sqlServerDB.SetConnectionString(m_strDataBase);
+
 	m_KeepDays = ReadRegKeyDWORD("KeepDays");
 	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
 	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
+
 	m_sqlServerDB.startDataBaseThread();
+	
 	checkDiskSize();
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -253,14 +259,14 @@ BOOL CRecorderDlg::InitCtiBoard()
 
 	for(int i = 0; i < nMaxCh; i++)
 	{
-		SetChannelState(i, CIRCUIT_IDLE);
+		SetChannelState(i, CH_IDLE);
 		ChMap[i].wRecDirection = MIX_RECORD;	    //mix-record
 		ChMap[i].nCallInCh = -1;	
 		ChMap[i].nCallOutCh = -1;
 		ChMap[i].nRecordTimes = 0;
 		ChMap[i].tStartTime = CTime::GetCurrentTime();
 		ChMap[i].nChType = SsmGetChType(i);
-		if (ChMap[i].nChType == 3)
+		if (ChMap[i].nChType == CH_TYPE_ANALOG_RECORD)
 		{
 			int nResult = SsmGetIgnoreLineVoltage(i);
 			if(nResult == 0)	//detect voltage
@@ -322,8 +328,8 @@ void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 	lvItem.mask = LVIF_IMAGE|LVIF_TEXT|LVIF_STATE;  //文字、图片、状态  
 	lvItem.iItem = nIndex;
 	lvItem.iSubItem = Channel;    //子列号  
-	if ( ChMap[nIndex].nState == CIRCUIT_TALKING 
-		||  ChMap[nIndex].nState == STATE_RECORDING)
+	if ( ChMap[nIndex].nState == CH_TALKING 
+		||  ChMap[nIndex].nState == CH_RECORDING)
 	{
 		lvItem.iImage = 0;  //图片索引号(第一幅图片)  
 		
@@ -383,8 +389,8 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #pragma region DTMF //Receiving phone number
 				case S_SPY_RCVPHONUM:
 					{
-						if(ChMap[nCic].nState == CIRCUIT_IDLE){
-							SetChannelState(nCic, CIRCUIT_RCV_PHONUM);
+						if(ChMap[nCic].nState == CH_IDLE){
+							SetChannelState(nCic, CH_RCV_PHONUM);
 						}
 					}
 					break;	
@@ -392,7 +398,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #pragma region 振铃 //Ringing
 				case S_SPY_RINGING:
 					{
-						SetChannelState(nCic, CIRCUIT_RINGING);
+						SetChannelState(nCic, CH_RINGING);
 						GetCallerAndCallee(nCic);
 						LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
 					}
@@ -401,7 +407,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #pragma region 通话 //Talking
 				case S_SPY_TALKING:
 					{
-						if(ChMap[nCic].nState == CIRCUIT_RCV_PHONUM)
+						if(ChMap[nCic].nState == CH_RCV_PHONUM)
 						{
 							GetCallerAndCallee(nCic);
 							LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
@@ -411,7 +417,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
 							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
-						SetChannelState(nCic, CIRCUIT_TALKING);
+						SetChannelState(nCic, CH_TALKING);
 						/*
 						if(ChMap[nCic].szCallerId.Compare("4008001100")){
 						   ChMap[nCic].szCalleeId.ReleaseBuffer();
@@ -437,7 +443,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						} 
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
-							SetChannelState(nCic, STATE_RECORDING);
+							SetChannelState(nCic, CH_RECORDING);
 							ChMap[nCic].tStartTime = CTime::GetCurrentTime();
 							ChMap[nCic].nRecordTimes++;
 							ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
@@ -494,7 +500,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_STANDBY:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_STANDBY");
-					SetChannelState(nCic, CIRCUIT_IDLE);
+					SetChannelState(nCic, CH_IDLE);
 					ChMap[nCic].szDtmf.Empty();
 					ChMap[nCic].szCalleeId.Empty();
 					ChMap[nCic].szCallerId.Empty();
@@ -507,7 +513,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_PICKUPED:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_PICKUPED");
-					SetChannelState(nCic, STATE_PICKUP);
+					SetChannelState(nCic, CH_PICKUP);
 				}
 				break;
 #pragma endregion off hook
@@ -515,7 +521,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case S_CALL_TALKING:
 				{
 					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_TALKING");
-					SetChannelState(nCic, CIRCUIT_TALKING);
+					SetChannelState(nCic, CH_TALKING);
 				}
 				break;
 #pragma endregion S_CALL_TALKING
@@ -603,7 +609,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		else if (nEventCode == E_SYS_BargeIn)//BargeIn event is detected 
 		{
 			int nCh = wParam; //wParam: number of channel output the event 
-			if((ChMap[nCh].nState == CIRCUIT_IDLE || ChMap[nCh].nState == STATE_PICKUP )&& (lParam == 1))
+			if((ChMap[nCh].nState == CH_IDLE || ChMap[nCh].nState == CH_PICKUP )&& (lParam == 1))
 			{					
 				SYSTEMTIME st;
 				GetLocalTime(&st);
@@ -616,7 +622,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 				LOG4CPLUS_INFO(log, "Ch:" <<  nCh << " StartRecording.");
 				if(StartRecording(nCh)){
-					SetChannelState(nCh, STATE_RECORDING);
+					SetChannelState(nCh, CH_RECORDING);
 					ChMap[nCh].tStartTime = CTime::GetCurrentTime();
 					ChMap[nCh].nRecordTimes++;
 					ChMap[nCh].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
@@ -634,7 +640,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		{
 
 			int nCh = wParam; //wParam: number of channel output the event 
-			if(ChMap[nCh].nState == STATE_RECORDING)
+			if(ChMap[nCh].nState == CH_RECORDING)
 			{
 				LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording:");
 				StopRecording(nCh);
@@ -648,7 +654,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				checkDiskSize();
 				UpdateData(FALSE);
 			}
-			SetChannelState(nCh,CIRCUIT_IDLE);
+			SetChannelState(nCh,CH_IDLE);
 			ChMap[nCh].szDtmf.Empty();
 			ChMap[nCh].szCalleeId.Empty();
 			ChMap[nCh].szCallerId.Empty();
@@ -919,13 +925,13 @@ void CRecorderDlg::checkDiskSize(void)
 
 bool CRecorderDlg::StopRecording(unsigned long nCh)
 {
-	SetChannelState(nCh,CIRCUIT_IDLE);
+	SetChannelState(nCh,CH_IDLE);
 	ChMap[nCh].szDtmf.Empty();
 	ChMap[nCh].szCalleeId.Empty();
 	ChMap[nCh].szCallerId.Empty();
 	ChMap[nCh].szFileName.Empty();
 
-	if(ChMap[nCh].nState != STATE_RECORDING){
+	if(ChMap[nCh].nState != CH_RECORDING){
 		return false;
 	}
 	LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording:");
@@ -1029,7 +1035,7 @@ bool CRecorderDlg::StartRecording(unsigned long nIndex){
 	return false;
 }
 
-void CRecorderDlg::SetChannelState(unsigned long nIndex, CIRCUIT_STATE newState)
+void CRecorderDlg::SetChannelState(unsigned long nIndex, CH_STATE newState)
 {
 	ChMap[nIndex].nState = newState;
 	ChMap[nIndex].szState = StateName[newState];
