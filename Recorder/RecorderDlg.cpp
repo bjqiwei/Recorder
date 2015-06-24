@@ -278,6 +278,14 @@ BOOL CRecorderDlg::InitCtiBoard()
 		else{
 			ChMap[i].bIgnoreLineVoltage = false;
 		}
+
+		if (ChMap[i].nChType == CH_TYPE_E1_RECORD)
+		{
+			if((ChMap[i].nCallInCh = SpyGetCallInCh(i)) == -1)	//Get the number of incoming channel
+				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallInCh"));
+			if((ChMap[i].nCallOutCh = SpyGetCallOutCh(i)) == -1)//Get the number of outgoing channel
+				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallOutCh"));
+		}
 	}
 
 	return TRUE;
@@ -383,6 +391,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				case S_SPY_STANDBY:
 					{
 						StopRecording(nCic);
+						ClearChVariable(nCic);
 						SetChannelState(nCic,CH_IDLE);
 						UpdateData(FALSE);
 					}
@@ -393,6 +402,12 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						if(ChMap[nCic].nState == CH_IDLE){
 							SetChannelState(nCic, CH_RCV_PHONUM);
+						}			
+						if(nCic != -1)
+						{
+							char cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
+							LOG4CPLUS_INFO(log, "Ch:" << nCic << " newDTMF:" << cNewDtmf);
+							ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
 						}
 					}
 					break;	
@@ -414,10 +429,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							GetCallerAndCallee(nCic);
 							LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
 						}
-						if((ChMap[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallInCh"));
-						if((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
 
 						SetChannelState(nCic, CH_TALKING);
 						/*
@@ -427,15 +438,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						   break;
 						  } */
 
-						//Start recording
-						//Record file name + Monitored circuit number + Time(hour-minute-second)
-						SYSTEMTIME st;
-						GetLocalTime(&st);
-						ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
-							st.wYear, st.wMonth, st.wDay,
-							st.wYear, st.wMonth, st.wDay, 
-							st.wHour, st.wMinute, st.wSecond,
-							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
+						//Start recording	
 						
 						 //根据主被叫号码判断录音方向
 						if(!ChMap[nCic].szCallerId.Compare("4008001100")){
@@ -443,17 +446,11 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						}else{
 						   ChMap[nCic].wRecDirection = CALL_IN_RECORD;
 						} 
+
+
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
 							SetChannelState(nCic, CH_RECORDING);
-							ChMap[nCic].tStartTime = CTime::GetCurrentTime();
-							ChMap[nCic].nRecordTimes++;
-							ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
-							ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-							m_RecordingSum++;
-							UpdateData(FALSE);
 						}
 					}
 					break;
@@ -498,6 +495,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				SetChannelState(nCh, CH_PICKUP);					
 			}
+			UpdateCircuitListCtrl(nCh);
 		}
 #pragma endregion E_PROC_RecordEnd
 #pragma region E_CHG_RingCount
@@ -512,55 +510,33 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				//receive CallerId
 				GetCallerAndCallee(nCh);
 			}
+			UpdateCircuitListCtrl(nCh);
 		}
 #pragma endregion E_CHG_RingCount
 #pragma region E_CHG_HookState
 		else if (nEventCode == E_CHG_HookState)
 		{
 			//Switching from channel number to circuit number
-			int nCic = MySpyChToCic(wParam);
-			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_CHG_HookState");
-			UINT32 nNewState = lParam;
-			switch(nNewState)
-			{
+			int nCh = wParam;
+			LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 #pragma region on hook
-			case S_CALL_STANDBY:
-				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_STANDBY");
-					SetChannelState(nCic, CH_IDLE);
-					ChMap[nCic].szDtmf.Empty();
-					ChMap[nCic].szCalleeId.Empty();
-					ChMap[nCic].szCallerId.Empty();
-					ChMap[nCic].szFileName.Empty();
-				}
-				break;
+			if(lParam == 0){
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCh << " S_CALL_STANDBY");
+				StopRecording(nCh);
+				ClearChVariable(nCh);
+				SetChannelState(nCh, CH_IDLE);
+			}
+
 #pragma endregion on hook
 #pragma region off hook
-
-			case S_CALL_PICKUPED:
-				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_PICKUPED");
-					SetChannelState(nCic, CH_PICKUP);
-				}
-				break;
-#pragma endregion off hook
-#pragma region S_CALL_TALKING
-			case S_CALL_TALKING:
-				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_TALKING");
-					SetChannelState(nCic, CH_TALKING);
-				}
-				break;
-#pragma endregion S_CALL_TALKING
-#pragma region unkown
-			default:
-				{
-					LOG4CPLUS_WARN(log, "Ch:" << nCic << " unknown state:" << std::hex << nNewState);
-				}
-				break;
-#pragma endregion unkown
+			if (lParam ==1){
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCh<< " S_CALL_PICKUPED");
+				StartRecording(nCh);
+				SetChannelState(nCh, CH_PICKUP);
 			}
-			UpdateCircuitListCtrl(nCic);
+
+#pragma endregion off hook
+			UpdateCircuitListCtrl(nCh);
 		}
 #pragma endregion E_CHG_HookState
 #pragma region E_CHG_ChState
@@ -573,6 +549,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			if(nNewState == S_CALL_STANDBY)
 			{
 				StopRecording(nCh);
+				ClearChVariable(nCh);
 				SetChannelState(nCh,CH_IDLE);
 			}
 			else if(nNewState == S_CALL_PICKUPED)
@@ -589,6 +566,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			else if(nNewState == S_CALL_OFFLINE)
 			{
 				StopRecording(nCh);
+				ClearChVariable(nCh);
 				SetChannelState(nCh,CH_OFFLINE);
 			}
 
@@ -618,7 +596,9 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if((ChMap[nCh].CtrlState == VOICE_CTRL))
 					{
-						StartRecording(nCh);
+						if(StartRecording(nCh)){
+							SetChannelState(nCh, CH_RECORDING);
+						}
 					}
 				}
 			}
@@ -628,7 +608,9 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if((ChMap[nCh].CtrlState == VOICE_CTRL))
 					{
-						StartRecording(nCh);
+						if(StartRecording(nCh)){
+							SetChannelState(nCh, CH_RECORDING);
+						}
 					}
 				}
 			}			
@@ -642,14 +624,15 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			if (ChMap[nCh].bIgnoreLineVoltage && ChMap[nCh].CtrlState == VOICE_CTRL)
 			{
 				StopRecording(nCh);
+				ClearChVariable(nCh);
 				SetChannelState(nCh, CH_IDLE);
 			}
 		}
 #pragma endregion E_SYS_NoSound
 		else
 		{
-			INT32 nCic = MySpyChToCic(wParam);
-			LOG4CPLUS_WARN(log, "Ch:" << nCic << " unresolve Event:" << std::hex << nEventCode);
+			INT32 nCh= wParam;
+			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << std::hex << nEventCode);
 		}
 
 	}
@@ -910,113 +893,150 @@ void CRecorderDlg::checkDiskSize(void)
 
 bool CRecorderDlg::StopRecording(unsigned long nCh)
 {
-	ChMap[nCh].szDtmf.Empty();
-	ChMap[nCh].szCalleeId.Empty();
-	ChMap[nCh].szCallerId.Empty();
-	ChMap[nCh].szFileName.Empty();
-
 	if(ChMap[nCh].nState != CH_RECORDING){
 		return false;
 	}
-	LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording:");
-	CicState[nCic].szCallOutDtmf.Empty();
-	ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-	ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-	ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-	m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-	LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-	m_RecordingSum--;
-	checkDiskSize();
-	if(m_nCallFnMode == 0)				
+	LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording.");
+
+#pragma region E1
+	if (ChMap[nCh].nChType == CH_TYPE_E1_RECORD)
 	{
-		//stop recording
-		if(SpyStopRecToFile(nCh) == -1){
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SpyStopRecToFile"));
+		if(m_nCallFnMode == 0)				
+		{
+			//stop recording
+			if(SpyStopRecToFile(nCh) == -1){
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SpyStopRecToFile"));
+				return false;
+			}
+		}
+		//Call the function with channel number as its parameter
+		else
+		{
+			if(ChMap[nCh].wRecDirection == CALL_IN_RECORD)
+			{
+				if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1){
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
+					return false;
+				}
+			}
+			else if(ChMap[nCh].wRecDirection == CALL_OUT_RECORD)
+			{
+				if(SsmStopRecToFile(ChMap[nCh].nCallOutCh) == -1){
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
+					return false;
+				}
+			}
+			else
+			{
+				if(SsmSetRecMixer(ChMap[nCh].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmSetRecMixer"));
+				if(SsmStopLinkFrom(ChMap[nCh].nCallOutCh, ChMap[nCh].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopLinkFrom"));
+				if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1)		//Stop recording
+				{
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
+					return false;
+				}
+			}
+		}
+	}
+#pragma endregion E1
+#pragma region ANALOG_RECORD
+	else if (ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD)
+	{
+		if(SsmStopRecToFile(nCh) == -1){  //stop recording
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << " failed to call function SsmStopRecToFile()");
 			return false;
 		}
 	}
-	//Call the function with channel number as its parameter
-	else
-	{
-		if(ChMap[nCh].wRecDirection == CALL_IN_RECORD)
-		{
-			if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1){
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
-		else if(ChMap[nCh].wRecDirection == CALL_OUT_RECORD)
-		{
-			if(SsmStopRecToFile(ChMap[nCh].nCallOutCh) == -1){
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
-		else
-		{
-			if(SsmSetRecMixer(ChMap[nCh].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmSetRecMixer"));
-			if(SsmStopLinkFrom(ChMap[nCh].nCallOutCh, ChMap[nCh].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopLinkFrom"));
-			if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1)		//Stop recording
-			{
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
-	}
+#pragma endregion ANALOG_RECORD
+	ChMap[nCh].tEndTime = CTime::GetCurrentTime();
+	ChMap[nCh].sql = "update  RecordLog set EndTime= '"+ChMap[nCh].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+	ChMap[nCh].sql += "  where F_Path='" + ChMap[nCh].szFileName + "'";
+	m_sqlServerDB.addSql2Queue(ChMap[nCh].sql.GetBuffer());
+	LOG4CPLUS_TRACE(log, "Ch:" << nCh << " addSql2Queue:" << ChMap[nCh].sql.GetBuffer());
+	m_RecordingSum--;
+	checkDiskSize();
 	return true;
 }
 
-bool CRecorderDlg::StartRecording(unsigned long nIndex){
+bool CRecorderDlg::StartRecording(unsigned long nCh){
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	ChMap[nCh].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
+		st.wYear, st.wMonth, st.wDay,
+		st.wYear, st.wMonth, st.wDay, 
+		st.wHour, st.wMinute, st.wSecond,
+		ChMap[nCh].szCallerId, ChMap[nCh].szCalleeId);
+
 	TCHAR szFile[MAX_PATH];
-	CString szDir = ChMap[nIndex].szFileName;
+	CString szDir = ChMap[nCh].szFileName;
 	lstrcpy(szFile,szDir.GetBuffer());
 	szDir = szDir.Left(szDir.ReverseFind('\\'));
 	CreateMultipleDirectory(szDir);
-	LOG4CPLUS_TRACE(log, "Ch:" << nIndex << ", record file:" << szFile);
-	if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
+	LOG4CPLUS_TRACE(log, "Ch:" << nCh << ", record file:" << szFile);
+
+#pragma region E1
+	if (ChMap[nCh].nChType == CH_TYPE_E1_RECORD)
 	{
-		if(SpyRecToFile(nIndex, ChMap[nIndex].wRecDirection, szFile, -1, 0L, -1, -1, 0) == -1)
-			LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyRecToFile"));
-		else{
-			return true;
+		if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
+		{
+			if(SpyRecToFile(nCh, ChMap[nCh].wRecDirection, szFile, -1, 0L, -1, -1, 0) == -1){
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SpyRecToFile"));
+				return false;
+			}
+		}
+		else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
+		{
+			if(ChMap[nCh].wRecDirection == CALL_IN_RECORD)
+			{
+				if(SsmRecToFile(ChMap[nCh].nCallInCh,szFile, -1, 0L, -1, -1, 0) == -1){
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmRecToFile"));
+					return false;
+				}
+			}
+			else if(ChMap[nCh].wRecDirection == CALL_OUT_RECORD)
+			{
+				if(SsmRecToFile(ChMap[nCh].nCallOutCh, szFile, -1, 0L, -1, -1, 0) == -1){
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmRecToFile"));
+					return false;
+				}
+				
+			}
+			else
+			{
+				if(SsmLinkFrom(ChMap[nCh].nCallOutCh, ChMap[nCh].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmLinkFrom"));
+
+				if(SsmSetRecMixer(ChMap[nCh].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
+					LOG4CPLUS_ERROR(log,"Ch:" << nCh <<  _T(" Fail to call SsmSetRecMixer"));
+
+				if(SsmRecToFile(ChMap[nCh].nCallInCh, szFile, -1, 0L, -1, -1, 0) == -1){//Recording
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmRecToFile"));
+					return false;
+				}
+				
+			}
 		}
 	}
-	else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
+#pragma endregion E1
+#pragma region ANALOG_RECORD
+	else if (ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD)
 	{
-		if(ChMap[nIndex].wRecDirection == CALL_IN_RECORD)
-		{
-			if(SsmRecToFile(ChMap[nIndex].nCallInCh,szFile, -1, 0L, -1, -1, 0) == -1)
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
-		}
-		else if(ChMap[nIndex].wRecDirection == CALL_OUT_RECORD)
-		{
-			if(SsmRecToFile(ChMap[nIndex].nCallOutCh, szFile, -1, 0L, -1, -1, 0) == -1)
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
-		}
-		else
-		{
-			if(SsmLinkFrom(ChMap[nIndex].nCallOutCh, ChMap[nIndex].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmLinkFrom"));
-
-			if(SsmSetRecMixer(ChMap[nIndex].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
-				LOG4CPLUS_ERROR(log,"Ch:" << nIndex <<  _T(" Fail to call SsmSetRecMixer"));
-
-			if(SsmRecToFile(ChMap[nIndex].nCallInCh, szFile, -1, 0L, -1, -1, 0) == -1)//Recording
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
+		if(SsmRecToFile(nCh, szFile, -1, 0L, -1, -1, 0) == -1){ //start recording
+			LOG4CPLUS_ERROR(log , "Ch:" << nCh <<" failed to call function SsmRecToFile()");
+			return false;
 		}
 	}
-	return false;
+#pragma endregion ANALOG_RECORD
+	ChMap[nCh].tStartTime = CTime::GetCurrentTime();
+	ChMap[nCh].nRecordTimes++;
+	ChMap[nCh].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
+	ChMap[nCh].sql += "VALUES ( '" + ChMap[nCh].szCallerId + "','9" + ChMap[nCh].szCalleeId + "','','" + ChMap[nCh].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCh].szFileName + "','0') ";
+	m_sqlServerDB.addSql2Queue(ChMap[nCh].sql.GetBuffer());
+	LOG4CPLUS_TRACE(log, "Ch:" << nCh << " addSql2Queue:" << ChMap[nCh].sql.GetBuffer());
+	m_RecordingSum++;
+	return true;
 }
 
 void CRecorderDlg::SetChannelState(unsigned long nIndex, CH_STATE newState)
@@ -1026,14 +1046,28 @@ void CRecorderDlg::SetChannelState(unsigned long nIndex, CH_STATE newState)
 }
 
 void CRecorderDlg::GetCaller(unsigned long nIndex){
-	if(SpyGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)//Get calling party number
-		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCallerId"));
-	ChMap[nIndex].szCallerId.ReleaseBuffer();
+	if (ChMap[nIndex].nChType == CH_TYPE_E1_RECORD)
+	{
+		if(SpyGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)//Get calling party number
+			LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCallerId"));
+		ChMap[nIndex].szCallerId.ReleaseBuffer();
+	}
+	else if (ChMap[nIndex].nChType == CH_TYPE_ANALOG_RECORD)
+	{
+		if(SsmGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)
+		{
+			LOG4CPLUS_ERROR(log, "Ch:" << nIndex << " failed to call function SsmGetCallerId()");
+		}
+	}
 }
 void CRecorderDlg::GetCallee(unsigned long nIndex){
-	if(SpyGetCalleeId(nIndex, ChMap[nIndex].szCalleeId.GetBuffer(20)) == -1)//Get called party number
+	if (ChMap[nIndex].nChType == CH_TYPE_E1_RECORD)
+	{	
+		if(SpyGetCalleeId(nIndex, ChMap[nIndex].szCalleeId.GetBuffer(20)) == -1)//Get called party number
 		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCalleeId"));
-	ChMap[nIndex].szCalleeId.ReleaseBuffer();
+		ChMap[nIndex].szCalleeId.ReleaseBuffer();
+	}
+
 }
 void CRecorderDlg::GetCallerAndCallee(unsigned long nIndex)
 {
@@ -1041,6 +1075,17 @@ void CRecorderDlg::GetCallerAndCallee(unsigned long nIndex)
 	GetCallee(nIndex);
 }
 
+void CRecorderDlg::ClearChVariable(unsigned long nCh)
+{
+	ChMap[nCh].szDtmf.Empty();
+	ChMap[nCh].szCalleeId.Empty();
+	ChMap[nCh].szCallerId.Empty();
+	ChMap[nCh].szFileName.Empty();
+	ChMap[nCh].wRecDirection = MIX_RECORD;
+	ChMap[nCh].szCallOutDtmf.Empty();
+	ChMap[nCh].szFileName.Empty();
+	ChMap[nCh].sql.Empty();
+}
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	switch(nEvent){
 	case E_CHG_SpyState:	return "E_CHG_SpyState";

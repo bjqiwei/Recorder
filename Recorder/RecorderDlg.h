@@ -75,7 +75,7 @@ typedef struct tagCH_STRUCT
 	CString szCallerId;		//Calling party number
 	CString szCalleeId;		//Called party number
 	CString szDtmf;		//DTMF received on the incoming channel
-	//CString szCallOutDtmf;	//DTMF received on the outgoing channel
+	CString szCallOutDtmf;	//DTMF received on the outgoing channel
 	WORD wRecDirection;			//Recording direction
 	int  nCallInCh;				//Incoming channel
 	int  nCallOutCh;			//Outgoing channel
@@ -174,6 +174,7 @@ public:
 	void GetCaller(unsigned long nIndex);
 	void GetCallee(unsigned long nIndex);
 	void GetCallerAndCallee(unsigned long nIndex);
+	void ClearChVariable(unsigned long nCh);
 	bool CreateMultipleDirectory(const CString& szPath);
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
