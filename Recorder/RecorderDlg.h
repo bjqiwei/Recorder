@@ -14,10 +14,12 @@
 
 // CRecorderDlg ¶Ô»°¿ò
 #define MAX_CH 1000		//Maximum number of the monitored circuits
+#define  MAX_ACTIVE_LINE_NUM 20
 //User-defined circuit status
 enum CH_STATE
 {
 	CH_IDLE,			//Idle state
+	CH_ACTIVE,			// active
 	CH_RCV_PHONUM,		//State of receiving phone number
 	CH_RINGING,		//State of ringing
 	CH_TALKING,		//State of talking
@@ -71,6 +73,12 @@ enum Control			//recording working mode
 	DTMF_CTRL			//code-control mode
 };
 
+enum
+{
+	RECORDING_BASE_SESSION,
+	RECORDING_BASE_DEVENT,
+};
+
 typedef struct tagCH_STRUCT
 {
 	CH_STATE  nState;				//State of monitored channel
@@ -90,6 +98,18 @@ typedef struct tagCH_STRUCT
 	int nChType;
 	int	CtrlState;		//recording working mode
 	bool bIgnoreLineVoltage;
+	// VOIP 
+	int nCallRef;
+	DWORD		dwSessionId;				//		Session ID
+	int			nPtlType;					//		Protocol type
+	int			nStationId;					//		Station ID
+	CString		szIPP;			//		IP address of primary
+	CString		szIPS;			//		IP address of slavery
+	int			nRecordingCtrl;				//		Recording controlled by DChannel event or just by session
+	int			nRecSlaverId;				//		Destination Slaver
+	DWORD		dwActiveTime;				//		the time enter active
+	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
+	
 }CH_STRUCT;
 
 class CRecorderDlg : public CDialogEx
