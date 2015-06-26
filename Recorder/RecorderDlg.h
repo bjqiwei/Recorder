@@ -24,6 +24,9 @@ enum CH_STATE
 	CH_RECORDING,		//录音
 	CH_PICKUP,			//摘机
 	CH_OFFLINE,			//断线
+	CH_UNAVAILABLE,		//不可用
+	CH_COMMUNICATING,	//通信中
+	CH_USING,		//使用
 };
 
 
@@ -56,7 +59,7 @@ enum CH_TYPE
 	CH_TYPE_NOMODULE = 20,//	SHT系列板卡未安装业务模块的通道
 	CH_TYPE_EM_CONTROL = 21,//	EM控制通道
 	CH_TYPE_EM_VOICE = 22,//	EM语音通道
-	CH_TYPE_IPR_RECORD = 25, //	IPR通道，即SynIPR录音通道
+	CH_TYPE_IPR = 25, //	IPR通道，即SynIPR录音通道
 	CH_TYPE_IPA = 26,//	IPA通道，即SynIPR数据包解析通
 
 };
@@ -179,6 +182,7 @@ public:
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
+	static std::string GetDSTStateName(unsigned int nState);
 #define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
 	CSystemTray m_TrayIcon; 
 	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);
