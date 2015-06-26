@@ -1044,6 +1044,8 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 
 					if(ChMap[i].nState == CH_IDLE)
 					{
+						ChMap[i].pSessionInfo = pSessionInfo;
+						ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
 						if(This->StartRecording(i)){
 							SetChannelState(i, CH_RECORDING);
 						}
@@ -1262,28 +1264,15 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			ScanSlaver();//update recorder slaver resoures
 			break;
 #pragma endregion E_IPR_LINK_REC_SLAVER_DISCONNECTED
+#pragma region E_IPR_RCV_DTMF
 		case E_IPR_RCV_DTMF:
-			wsprintf(szEvtName, "E_IPR_RCV_DTMF");
-			break;
-		case E_PROC_RecordEnd:
-			wsprintf(szEvtName, "E_PROC_RecordEnd");
-			break;
 		case E_RCV_IPR_MEDIA_SESSION_FOWARDING:
-			wsprintf(szEvtName, "E_RCV_IPR_MEDIA_SESSION_FOWARDING");
-			break;
 		case E_RCV_IPR_MEDIA_SESSION_FOWARD_STOPED:
-			wsprintf(szEvtName, "E_RCV_IPR_MEDIA_SESSION_FOWARD_STOPED");
-			break;
 		case E_IPR_PAUSE_REC_CB:
-			wsprintf(szEvtName, "E_IPR_PAUSE_REC_CB");
-			break;
 		case E_IPR_RESTART_REC_CB:
-			wsprintf(szEvtName, "E_IPR_RESTART_REC_CB");
+			LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));			
 			break;
-		default:
-			wsprintf(szEvtName, "0x%x", pEvent->wEventCode);
-			break;
-	}
+#pragma endregion E_IPR_RESTART_REC_CB
 #pragma region E_SYS_BargeIn
 		case E_SYS_BargeIn: //BargeIn event is detected 
 		{
@@ -1760,8 +1749,9 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 #pragma region IPR
 	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
 	{
-		if(SsmIPRActiveAndRecToFile(i, IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
-			pSessionInfo->nPrimaryCodec, &pSessionInfo->nFowardingPPort, &pSessionInfo->nFowardingSPort, 
+		if(SsmIPRActiveAndRecToFile(nCh, ChMap[nCh].nRecSlaverId, ChMap[nCh].pSessionInfo->dwSessionId,
+			ChMap[nCh].pSessionInfo->nPrimaryCodec, &ChMap[nCh].pSessionInfo->nFowardingPPort,
+			&ChMap[nCh].pSessionInfo->nFowardingSPort, 
 			szFile, -1, 0, -1, -1, 0) != 0)
 		{
 			CString CErrMsg;
@@ -1830,46 +1820,48 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 	ChMap[nCh].szCallOutDtmf.Empty();
 	ChMap[nCh].szFileName.Empty();
 	ChMap[nCh].sql.Empty();
-	ChMap[nIndex].dwSessionId = 0;
-	ChMap[nIndex].nPtlType = -1;
-	ChMap[nIndex].nStationId = -1;
-	//ChMap[nIndex].nCallRef = -1;
-	ChMap[nIndex].szIPP.Empty();
-	ChMap[nIndex].szIPS.Empty();
-	ChMap[nIndex].nRecordingCtrl = -1;
-	ChMap[nIndex].nRecSlaverId = -1;
+	ChMap[nCh].dwSessionId = 0;
+	ChMap[nCh].nPtlType = -1;
+	ChMap[nCh].nStationId = -1;
+	//ChMap[nCh].nCallRef = -1;
+	ChMap[nCh].szIPP.Empty();
+	ChMap[nCh].szIPS.Empty();
+	ChMap[nCh].nRecordingCtrl = -1;
+	ChMap[nCh].nRecSlaverId = -1;
 }
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	switch(nEvent){
-	case E_CHG_SpyState:			return "E_CHG_SpyState";
-	case S_SPY_RCVPHONUM:			return "S_SPY_RCVPHONUM";
-	case S_SPY_RINGING:				return "S_SPY_RINGING";
-	case S_SPY_TALKING:				return "S_SPY_TALKING";
-	case E_SYS_BargeIn:				return "E_SYS_BargeIn";
-	case E_SYS_NoSound:				return "E_SYS_NoSound";
-	case E_PROC_RecordEnd:			return "E_PROC_RecordEnd";
-	case E_CHG_RingCount:			return "E_CHG_RingCount";
-	case E_RCV_IPR_DChannel:		return "E_RCV_IPR_DChannel";
-	case E_CHG_PcmLinkStatus:		return "E_CHG_PcmLinkStatus";
-	case E_RCV_IPR_DONGLE_ADDED:	return "E_RCV_IPR_DONGLE_ADDED";
-	case E_RCV_IPR_DONGLE_REMOVED:	return "E_RCV_IPR_DONGLE_REMOVED";
-	case E_RCV_IPA_DONGLE_ADDED:	return "E_RCV_IPA_DONGLE_ADDED";
-	case E_RCV_IPA_DONGLE_REMOVED:	return "E_RCV_IPA_DONGLE_REMOVED";
-	case E_RCV_IPA_APPLICATION_PENDING:return "E_RCV_IPA_APPLICATION_PENDING";
-	case E_RCV_IPR_STATION_ADDED:	return "E_RCV_IPR_STATION_ADDED";
-	case E_RCV_IPR_STATION_REMOVED:	return "E_RCV_IPR_STATION_REMOVED";
-	case E_RCV_IPR_AUTH_OVERFLOW:	return "E_RCV_IPR_AUTH_OVERFLOW";
-	case E_IPR_SLAVER_INIT_CB:		return "E_IPR_SLAVER_INIT_CB";
-	case E_IPR_START_SLAVER_CB:		return "E_IPR_START_SLAVER_CB";
-	case E_IPR_CLOSE_SLAVER_CB:		return "E_IPR_CLOSE_SLAVER_CB";
-	case E_RCV_IPR_MEDIA_SESSION_STARTED:return "E_RCV_IPR_MEDIA_SESSION_STARTED";
+	case E_CHG_SpyState:					return "E_CHG_SpyState";
+	case E_SYS_BargeIn:						return "E_SYS_BargeIn";
+	case E_SYS_NoSound:						return "E_SYS_NoSound";
+	case E_PROC_RecordEnd:					return "E_PROC_RecordEnd";
+	case E_CHG_RingCount:					return "E_CHG_RingCount";
+	case E_RCV_IPR_DChannel:				return "E_RCV_IPR_DChannel";
+	case E_CHG_PcmLinkStatus:				return "E_CHG_PcmLinkStatus";
+	case E_RCV_IPR_DONGLE_ADDED:			return "E_RCV_IPR_DONGLE_ADDED";
+	case E_RCV_IPR_DONGLE_REMOVED:			return "E_RCV_IPR_DONGLE_REMOVED";
+	case E_RCV_IPA_DONGLE_ADDED:			return "E_RCV_IPA_DONGLE_ADDED";
+	case E_RCV_IPA_DONGLE_REMOVED:			return "E_RCV_IPA_DONGLE_REMOVED";
+	case E_RCV_IPA_APPLICATION_PENDING:		return "E_RCV_IPA_APPLICATION_PENDING";
+	case E_RCV_IPR_STATION_ADDED:			return "E_RCV_IPR_STATION_ADDED";
+	case E_RCV_IPR_STATION_REMOVED:			return "E_RCV_IPR_STATION_REMOVED";
+	case E_RCV_IPR_AUTH_OVERFLOW:			return "E_RCV_IPR_AUTH_OVERFLOW";
+	case E_IPR_SLAVER_INIT_CB:				return "E_IPR_SLAVER_INIT_CB";
+	case E_IPR_START_SLAVER_CB:				return "E_IPR_START_SLAVER_CB";
+	case E_IPR_CLOSE_SLAVER_CB:				return "E_IPR_CLOSE_SLAVER_CB";
+	case E_RCV_IPR_MEDIA_SESSION_STARTED:	return "E_RCV_IPR_MEDIA_SESSION_STARTED";
 	case E_RCV_IPR_AUX_MEDIA_SESSION_STARTED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STARTED";
-	case E_RCV_IPR_MEDIA_SESSION_STOPED:return "E_RCV_IPR_MEDIA_SESSION_STOPED";
+	case E_RCV_IPR_MEDIA_SESSION_STOPED:	return "E_RCV_IPR_MEDIA_SESSION_STOPED";
 	case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STOPED";
-	case E_IPR_ACTIVE_AND_REC_CB:	return "E_IPR_ACTIVE_AND_REC_CB";
-	case E_IPR_DEACTIVE_AND_STOPREC_CB:return "E_IPR_DEACTIVE_AND_STOPREC_CB";
-	case E_IPR_LINK_REC_SLAVER_CONNECTED:return "E_IPR_LINK_REC_SLAVER_CONNECTED";
+	case E_IPR_ACTIVE_AND_REC_CB:			return "E_IPR_ACTIVE_AND_REC_CB";
+	case E_IPR_DEACTIVE_AND_STOPREC_CB:		return "E_IPR_DEACTIVE_AND_STOPREC_CB";
+	case E_IPR_LINK_REC_SLAVER_CONNECTED:	return "E_IPR_LINK_REC_SLAVER_CONNECTED";
 	case E_IPR_LINK_REC_SLAVER_DISCONNECTED:return "E_IPR_LINK_REC_SLAVER_DISCONNECTED";
+	case E_IPR_RCV_DTMF:					return "E_IPR_RCV_DTMF";
+	case E_RCV_IPR_MEDIA_SESSION_FOWARDING:	return "E_RCV_IPR_MEDIA_SESSION_FOWARDING";
+	case E_RCV_IPR_MEDIA_SESSION_FOWARD_STOPED:return "E_RCV_IPR_MEDIA_SESSION_FOWARD_STOPED";
+	case E_IPR_PAUSE_REC_CB:				return "E_IPR_PAUSE_REC_CB";
+	case E_IPR_RESTART_REC_CB:				return "E_IPR_RESTART_REC_CB";
 	default:
 		{
 			std::stringstream oss;

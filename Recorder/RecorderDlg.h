@@ -126,6 +126,7 @@ typedef struct tagCH_STRUCT
 	int			nRecSlaverId;				//		Destination Slaver
 	DWORD		dwActiveTime;				//		the time enter active
 	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
+	pIPR_SessionInfo pSessionInfo;
 	
 }CH_STRUCT;
 
