@@ -118,10 +118,10 @@ public:
 	CImageList m_ImageList;
 	//int		m_nRecFormat;
 	int		m_nCallFnMode;
-	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+	static int CALLBACK EventCallback(PSSM_EVENT pEvent);
+	static CH_STRUCT ChMap[MAX_CH];	//Monitored circuits
+	static int nMaxCh;					//Maximum number of the monitored channel
 private:
-	CH_STRUCT ChMap[MAX_CH];	//Monitored circuits
-	int nMaxCh;					//Maximum number of the monitored channel
 	ULONGLONG m_freeCapacity;
 	ULONGLONG m_totalCapacity;
 	BOOL InitCtiBoard();			//Initialize board
@@ -170,11 +170,11 @@ public:
 	CString m_strApplySize;
 	bool StopRecording(unsigned long nIndex);
 	bool StartRecording(unsigned long nIndex);
-	void SetChannelState(unsigned long nIndex, CH_STATE newState);
-	void GetCaller(unsigned long nIndex);
-	void GetCallee(unsigned long nIndex);
-	void GetCallerAndCallee(unsigned long nIndex);
-	void ClearChVariable(unsigned long nCh);
+	static void SetChannelState(unsigned long nIndex, CH_STATE newState);
+	static void GetCaller(unsigned long nIndex);
+	static void GetCallee(unsigned long nIndex);
+	static void GetCallerAndCallee(unsigned long nIndex);
+	static void ClearChVariable(unsigned long nCh);
 	bool CreateMultipleDirectory(const CString& szPath);
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
