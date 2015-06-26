@@ -15,6 +15,20 @@
 // CRecorderDlg 对话框
 #define MAX_CH 1000		//Maximum number of the monitored circuits
 #define  MAX_ACTIVE_LINE_NUM 20
+#define MAX_SLAVER_COUNT 6
+
+
+#define PCM_8	1
+#define PCM_16	-2
+#define A_LAW	6
+#define U_LAW	7
+#define ADPCM	17
+#define VOX		23
+#define GSM		49
+#define MP3		85
+#define GC8		131
+#define G729A	65411
+
 //User-defined circuit status
 enum CH_STATE
 {
@@ -29,6 +43,7 @@ enum CH_STATE
 	CH_UNAVAILABLE,		//不可用
 	CH_COMMUNICATING,	//通信中
 	CH_USING,		//使用
+	CH_PAUSED,		//停止
 };
 
 
@@ -103,6 +118,8 @@ typedef struct tagCH_STRUCT
 	DWORD		dwSessionId;				//		Session ID
 	int			nPtlType;					//		Protocol type
 	int			nStationId;					//		Station ID
+	int			nFowardingPPort;			//		Primary forwarding port
+	int			nFowardingSPort;			//		Secondary forwarding port
 	CString		szIPP;			//		IP address of primary
 	CString		szIPS;			//		IP address of slavery
 	int			nRecordingCtrl;				//		Recording controlled by DChannel event or just by session
@@ -144,6 +161,10 @@ public:
 	static int CALLBACK EventCallback(PSSM_EVENT pEvent);
 	static CH_STRUCT ChMap[MAX_CH];	//Monitored circuits
 	static int nMaxCh;					//Maximum number of the monitored channel
+	static int   nIPRBoardId;
+	static int   nIPABoardId;
+	static int   nSlaverCount;
+	static IPR_SLAVERADDR IPR_SlaverAddr[MAX_SLAVER_COUNT];
 private:
 	ULONGLONG m_freeCapacity;
 	ULONGLONG m_totalCapacity;
@@ -198,6 +219,7 @@ public:
 	static void GetCallee(unsigned long nIndex);
 	static void GetCallerAndCallee(unsigned long nIndex);
 	static void ClearChVariable(unsigned long nCh);
+	static void ScanSlaver();
 	bool CreateMultipleDirectory(const CString& szPath);
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);

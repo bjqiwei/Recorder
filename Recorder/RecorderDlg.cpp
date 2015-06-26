@@ -41,13 +41,17 @@ static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		
 static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
 static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, /* DTMFWidth,*/RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
-static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机","断线","不可用","通信中","使用"};		
+static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机","断线","不可用","通信中","使用","停止"};		
 // CRecorderDlg 对话框
 
 
 
 int CRecorderDlg::nMaxCh = 0;
 CH_STRUCT CRecorderDlg::ChMap[MAX_CH];
+int CRecorderDlg::nIPRBoardId = -1;
+int CRecorderDlg::nIPABoardId = -1;
+int CRecorderDlg::nSlaverCount = 0;
+IPR_SLAVERADDR CRecorderDlg::IPR_SlaverAddr[MAX_SLAVER_COUNT];
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CRecorderDlg::IDD, pParent),m_freeCapacity(0),m_totalCapacity(1)
@@ -239,7 +243,9 @@ BOOL CRecorderDlg::InitCtiBoard()
 
 	//Judge if the number of initialized boards is the same as
 	//		   that of boards specified in the configuration file
-	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
+	int nTotalBoards;
+	nTotalBoards = SsmGetMaxUsableBoard();
+	if(nTotalBoards != SsmGetMaxCfgBoard())
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message
 		CErrMsg.ReleaseBuffer();
@@ -247,6 +253,33 @@ BOOL CRecorderDlg::InitCtiBoard()
 		return FALSE;
 	}
 
+	for( int i=0; i < nTotalBoards; i++)
+	{
+		if(SsmGetBoardModel(i) == 0xfd)	//IPRecorder card type is 0xfd
+		{
+			nIPRBoardId = i;
+			break;
+		}
+	}
+
+	for(int i=0; i < nTotalBoards; i++)
+	{
+		if(SsmGetBoardModel(i) == 0xfe)	//IPAnalyzer card type is 0xfe
+		{
+			nIPABoardId = i;
+			break;
+		}
+	}
+
+	if(nIPRBoardId == -1)	//If not find IPRecorder card, show error message.
+	{
+		LOG4CPLUS_INFO(log, "No IPRecorder card, please check!");
+	}
+
+	if(nIPABoardId == -1)	//If not find IPRecorder card, show error message.
+	{
+		LOG4CPLUS_INFO(log, "No IPAnalyzer card, please check!");
+	}
 
 	//Get the maximum number of the monitored circuits
 	nMaxCh = SpyGetMaxCic();
@@ -295,6 +328,8 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].nStationId = -1;
 		ChMap[i].nRecordingCtrl = -1;
 		ChMap[i].nRecSlaverId = -1;
+		ChMap[i].nFowardingPPort = -1;
+		ChMap[i].nFowardingSPort = -1;
 		ChMap[i].dwActiveTime = GetTickCount();
 		for(int j=0; j < MAX_ACTIVE_LINE_NUM; j++)
 		{
@@ -549,8 +584,11 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma region off hook
 			else if (pEvent->dwParam ==1){
 				LOG4CPLUS_DEBUG(log, "Ch:" << nCh<< " S_CALL_PICKUPED");
-				This->StartRecording(nCh);
-				SetChannelState(nCh, CH_PICKUP);
+				if (This->StartRecording(nCh)){
+					SetChannelState(nCh, CH_RECORDING);
+				}
+				else
+					SetChannelState(nCh, CH_PICKUP);
 			}
 
 #pragma endregion off hook
@@ -911,265 +949,292 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_RCV_IPR_STATION_REMOVED:
 			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode));
 			break;
-#pragma endregion E_RCV_IPR_DONGLE_ADDED
+#pragma endregion E_RCV_IPR_STATION_REMOVED
 #pragma region E_RCV_IPR_AUTH_OVERFLOW
 		case E_RCV_IPR_AUTH_OVERFLOW:
 			LOG4CPLUS_ERROR(log, "SanHui nEventCode:" << GetShEventName(nEventCode));
 			break;
 #pragma endregion E_RCV_IPR_AUTH_OVERFLOW
+#pragma region E_IPR_SLAVER_INIT_CB
 		case E_IPR_SLAVER_INIT_CB:
-			wsprintf(szEvtName, "E_IPR_SLAVER_INIT_CB");;
-			pIPRecorderDlg->ScanSlaver();
-			pIPRecorderDlg->bSlaverConnectChanged = TRUE;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
-			break;
 		case E_IPR_START_SLAVER_CB:
-			wsprintf(szEvtName, "E_IPR_START_SLAVER_CB");
-			pIPRecorderDlg->ScanSlaver();
-			pIPRecorderDlg->bSlaverConnectChanged = TRUE;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
-			break;
 		case E_IPR_CLOSE_SLAVER_CB:
-			wsprintf(szEvtName, "E_IPR_CLOSE_SLAVER_CB");
-			pIPRecorderDlg->ScanSlaver();
-			pIPRecorderDlg->bSlaverConnectChanged = TRUE;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
+			LOG4CPLUS_ERROR(log, "SanHui nEventCode:" << GetShEventName(nEventCode));
+			ScanSlaver();
 			break;
+#pragma endregion E_IPR_CLOSE_SLAVER_CB
+#pragma region E_RCV_IPR_MEDIA_SESSION_STARTED
 		case E_RCV_IPR_MEDIA_SESSION_STARTED:
 		case E_RCV_IPR_AUX_MEDIA_SESSION_STARTED:
-			if(pEvent->wEventCode == E_RCV_IPR_MEDIA_SESSION_STARTED)
-				wsprintf(szEvtName, "E_RCV_IPR_MEDIA_SESSION_STARTED");
-			else
-				wsprintf(szEvtName, "E_RCV_IPR_AUX_MEDIA_SESSION_STARTED");
-			pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
-			nPtlType = pEvent->dwXtraInfo >> 16;
-			nStationId = pEvent->dwXtraInfo & 0xffff;
-			pIPRecorderDlg->ChannelInfo[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-			pIPRecorderDlg->ChannelInfo[pEvent->nReference].bCallInfoUpdated = TRUE;
-			pIPRecorderDlg->m_lTotalStatistics++;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
-
-			if(pIPRecorderDlg->nSlaverCount > 0)
 			{
-				bFind = FALSE;
-				for(i=0; i<pIPRecorderDlg->MaxLine; i++)
+				LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
+				int nPtlType = pEvent->dwXtraInfo >> 16;
+				int nStationId = pEvent->dwXtraInfo & 0xffff;
+				ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
+
+				if(nSlaverCount > 0)
 				{
-					if(pIPRecorderDlg->ChannelInfo[i].nChType == IPR_CH)
+					BOOL bFind = FALSE;
+					int i = 0;
+					for(i=0; i<nMaxCh; i++)
 					{
-						if(nPtlType == PTL_SIP && nStationId == 0xffff)
+						if(ChMap[i].nChType == CH_TYPE_IPR)
 						{
-							if(pIPRecorderDlg->ChannelInfo[i].nCallRef == pSessionInfo->nCallRef)
+							if(nPtlType == PTL_SIP && nStationId == 0xffff)
 							{
-								wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPP, "");
-								wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPS, "");
+								if(ChMap[i].nCallRef == pSessionInfo->nCallRef)
+								{
+									ChMap[i].szIPP.Empty();
+									ChMap[i].szIPS.Empty();
+									bFind = TRUE;
+									break;
+								}
+							}
+							else if(ChMap[i].nStationId == nStationId)
+							{
+								ChMap[i].szIPP.Empty();
+								ChMap[i].szIPS.Empty();
 								bFind = TRUE;
 								break;
 							}
 						}
-						else if(pIPRecorderDlg->ChannelInfo[i].nStationId == nStationId)
+					}
+					if(!bFind)
+					{
+						for(i=0; i< nMaxCh; i++)
 						{
-							wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPP, "");
-							wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPS, "");
+							if(ChMap[i].nChType == CH_TYPE_IPR 
+								&& ChMap[i].nStationId == -1
+								&& ChMap[i].dwSessionId == 0)
+							{
+								if(SsmGetChState(i) == S_CALL_STANDBY)
+								{
+									ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
+									ChMap[i].nRecordingCtrl = RECORDING_BASE_SESSION;
+									SetChannelState(i, CH_ACTIVE);
+									bFind = TRUE;
+									break;
+								}
+							}
+						}
+					}
+
+					if(!bFind)
+					{
+						break;
+					}
+
+					ChMap[i].szIPP.Format("%d.%d.%d.%d", pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, 
+						pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4);
+					ChMap[i].szIPS.Format("%d.%d.%d.%d", pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, 
+						pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4);
+				
+					int nSlaverIndex = -1;
+					for(int j=0; j<nSlaverCount; j++)
+					{
+						if(IPR_SlaverAddr[j].nTotalResources - IPR_SlaverAddr[j].nUsedResources > 0)
+						{
+							nSlaverIndex = j;
+							break;
+						}
+					}
+					if(nSlaverIndex < 0)
+						break;
+
+					if(ChMap[i].nState == CH_IDLE)
+					{
+						if(This->StartRecording(i)){
+							SetChannelState(i, CH_RECORDING);
+						}
+					
+						ChMap[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
+						ChMap[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
+						ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
+						ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
+						ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
+					}
+					else if(ChMap[i].nState == CH_PAUSED)
+					{
+						SsmRestartRecToFile(i);
+						char szIPP_Rec[50], szIPS_Rec[50];
+						wsprintf(szIPP_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+						wsprintf(szIPS_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+						if(SsmIPRSendSession(pEvent->nReference, szIPP_Rec, ChMap[i].nFowardingPPort, 
+							szIPS_Rec, ChMap[i].nFowardingSPort) != 0)
+						{
+							CString CErrMsg;
+							SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
+							CErrMsg.ReleaseBuffer();
+							LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< CErrMsg.GetBuffer());
+						}
+						SetChannelState(i, CH_ACTIVE);
+					}
+					//used for shortel mgcp conference issuse
+					else if(ChMap[i].nState== CH_ACTIVE) 
+					{
+						char szIPP_Rec[50], szIPS_Rec[50];
+						wsprintf(szIPP_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+						wsprintf(szIPS_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+						SsmIPRActiveSession(i, IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
+							szIPP_Rec, 0, &pSessionInfo->nFowardingPPort, pSessionInfo->nPrimaryCodec,
+							szIPS_Rec, 0, &pSessionInfo->nFowardingSPort, pSessionInfo->nSecondaryCodec);
+						SsmIPRSendSession(pEvent->nReference, szIPP_Rec, pSessionInfo->nFowardingPPort, 
+							szIPS_Rec, pSessionInfo->nFowardingSPort);
+					}
+					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
+				}
+			}
+			break;
+#pragma endregion E_RCV_IPR_AUX_MEDIA_SESSION_STARTED
+#pragma region E_RCV_IPR_MEDIA_SESSION_STOPED
+		case E_RCV_IPR_MEDIA_SESSION_STOPED:
+		case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:
+			{
+				LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+
+				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
+				int nPtlType = pEvent->dwXtraInfo >> 16;
+				int nStationId = pEvent->dwXtraInfo & 0xffff;
+
+				ChMap[pEvent->nReference].dwSessionId = 0;
+
+				BOOL bFind = FALSE;
+				int i = 0;
+				for(i=0; i<nMaxCh; i++)
+				{
+					if(nPtlType == PTL_SIP && nStationId == 0xffff)
+					{
+						if(ChMap[i].nCallRef == pSessionInfo->nCallRef
+							&& ChMap[i].nChType == CH_TYPE_IPR
+							&& ChMap[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
+						{
+							ChMap[i].dwSessionId = 0;
+							bFind = TRUE;
+							break;
+						}
+					}
+					else if(ChMap[i].nStationId == nStationId
+						&& ChMap[i].nChType == CH_TYPE_IPR
+						&& ChMap[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
+					{
+						ChMap[i].dwSessionId = 0;
+						bFind = TRUE;
+						break;
+					}
+				} 
+
+				if(!bFind)
+				{
+					for(i=0; i<nMaxCh; i++)
+					{
+						if(ChMap[i].nStationId == nStationId
+							&& ChMap[i].nChType == CH_TYPE_IPR
+							&& ChMap[i].dwSessionId == pSessionInfo->dwSessionId
+							&& ChMap[i].nRecordingCtrl == RECORDING_BASE_SESSION)
+						{
+							ChMap[i].dwSessionId = 0;
+							SetChannelState(i, CH_IDLE);
+							This->UpdateCircuitListCtrl(i);
+							bFind = TRUE;
+							break;
+						}
+					} 
+				}
+
+				if(!bFind)
+				{
+					break;
+				}
+
+				if(ChMap[i].nState == CH_RECORDING)
+				{
+					This->StopRecording(i);
+					SetChannelState(i, CH_IDLE);
+					ClearChVariable(i);
+					This->UpdateCircuitListCtrl(i);
+				}
+				else if(ChMap[i].nState == CH_ACTIVE)
+				{
+					SsmPauseRecToFile(i);
+					SetChannelState(i,CH_PAUSED);
+					This->UpdateCircuitListCtrl(i);
+
+				}
+			}
+			break;
+#pragma endregion E_RCV_IPR_AUX_MEDIA_SESSION_STOPED
+		case E_IPR_ACTIVE_AND_REC_CB:
+				wsprintf(szEvtName, "E_IPR_ACTIVE_AND_REC_CB");
+				if(pEvent->dwParam & 0xffff)	//error occurred
+				{
+					GetLocalTime(&time);
+					wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, recorder slaver return error, code = %d.", time.wMonth, time.wDay, time.wYear, 
+						time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, pEvent->nReference, pEvent->dwParam & 0xffff);
+					pIPRecorderDlg->bErrorOccurred = TRUE;
+					PCHANNEL_INFO pChannelInfo;
+					pChannelInfo = &(pIPRecorderDlg->ChannelInfo[pEvent->nReference]);
+					pChannelInfo->dwSessionId = 0;
+					pChannelInfo->nPtlType = -1;
+					pChannelInfo->nStationId = -1;
+					wsprintf(pChannelInfo->szIPP, "");
+					wsprintf(pChannelInfo->szIPS, "");
+					pChannelInfo->nRecordingCtrl = -1;
+					pChannelInfo->nRecSlaverId = -1;
+					pIPRecorderDlg->m_nRecordError++;
+					pChannelInfo->bCallInfoUpdated = TRUE;
+					break;
+				}
+				bFind = FALSE;
+				for(i=0; i<pIPRecorderDlg->MaxLine; i++)
+				{
+					if(pIPRecorderDlg->ChannelInfo[i].dwSessionId == pIPRecorderDlg->ChannelInfo[pEvent->nReference].dwSessionId 
+						&& pIPRecorderDlg->ChannelInfo[i].nChType == IPA_CH)
+					{
+						if(pIPRecorderDlg->ChannelInfo[i].dwSessionId)
+						{
 							bFind = TRUE;
 							break;
 						}
 					}
 				}
 				if(!bFind)
-				{
-					for(i=0; i<pIPRecorderDlg->MaxLine; i++)
-					{
-						if(pIPRecorderDlg->ChannelInfo[i].nChType == IPR_CH 
-							&& pIPRecorderDlg->ChannelInfo[i].nStationId == -1
-							&& pIPRecorderDlg->ChannelInfo[i].dwSessionId == 0)
-						{
-							pIPRecorderDlg->ChannelInfo[i].nWorkState = SsmGetChState(i);
-							if(pIPRecorderDlg->ChannelInfo[i].nWorkState == S_CALL_STANDBY)
-							{
-								pIPRecorderDlg->ChannelInfo[i].dwSessionId = pSessionInfo->dwSessionId;
-								pIPRecorderDlg->ChannelInfo[i].nRecordingCtrl = RECORDING_BASE_SESSION;
-								pIPRecorderDlg->ChannelInfo[i].nCallState = CALL_STATE_ACTIVE;
-								bFind = TRUE;
-								break;
-							}
-						}
-					}
-				}
-
-				if(!bFind)
-				{
 					break;
-				}
-
-				wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPP, "%d.%d.%d.%d", pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, 
-					pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4);
-				wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPS, "%d.%d.%d.%d", pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, 
-					pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4);
-
-				GetLocalTime(&time);
-				if (pIPRecorderDlg->m_bRecOverWrite)
-				{
-					wsprintf(pIPRecorderDlg->szRecFilePath, "%s\\recorderfiles\\ch%03d.mp3", pIPRecorderDlg->m_strSelectedFolder, i);
-				}
-				else
-				{
-					wsprintf(pIPRecorderDlg->szRecFilePath, "%s\\recorderfiles\\%d_%02d_%02d_%02d\\ch%d_%02d_%02d_%02d_%03d(%d.%d.%d.%d-%d.%d.%d.%d).wav", pIPRecorderDlg->m_strSelectedFolder, 
-						time.wYear, time.wMonth, time.wDay, time.wHour, i, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds,
-						pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4,
-						pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4);
-				}
 				nSlaverIndex = -1;
-				for(int j=0; j<pIPRecorderDlg->nSlaverCount; j++)
+				nSlaverId = pEvent->dwParam >> 16;
+				for(uc = 0; uc < pIPRecorderDlg->nSlaverCount; uc++)
 				{
-					if(pIPRecorderDlg->IPR_SlaverAddr[j].nTotalResources - pIPRecorderDlg->IPR_SlaverAddr[j].nUsedResources > 0)
+					if(pIPRecorderDlg->IPR_SlaverAddr[uc].nRecSlaverID == nSlaverId)
 					{
-						nSlaverIndex = j;
+						nSlaverIndex = uc;
 						break;
 					}
 				}
 				if(nSlaverIndex < 0)
 					break;
 
-				if(pIPRecorderDlg->ChannelInfo[i].nRecordingState == RECORDING_IDLE)
-				{
-					if(SsmIPRActiveAndRecToFile(i, pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
-						pSessionInfo->nPrimaryCodec, &pSessionInfo->nFowardingPPort, &pSessionInfo->nFowardingSPort, 
-						pIPRecorderDlg->szRecFilePath, pIPRecorderDlg->nRecCodec, 0, -1, -1, 0) != 0)
-					{
-						SsmGetLastErrMsg(pIPRecorderDlg->szErrMsg);
-						wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, ", time.wMonth, time.wDay, time.wYear, 
-							time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, i);
-						strcat(szErrMsgDisplay, pIPRecorderDlg->szErrMsg);
-						pIPRecorderDlg->bErrorOccurred = TRUE;
-						pIPRecorderDlg->m_nRecordError++;
-					}
-					pIPRecorderDlg->ChannelInfo[i].nRecordingState = RECORDING_ACTIVED;
-					pIPRecorderDlg->ChannelInfo[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
-					pIPRecorderDlg->ChannelInfo[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
-					pIPRecorderDlg->ChannelInfo[i].nRecSlaverId = pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
-					pIPRecorderDlg->ChannelInfo[i].nPtlType = pEvent->dwXtraInfo >> 16;
-					pIPRecorderDlg->ChannelInfo[i].nStationId = pEvent->dwXtraInfo & 0xffff;
-				}
-				else if(pIPRecorderDlg->ChannelInfo[i].nRecordingState== RECORDING_PAUSED)
-				{
-					SsmRestartRecToFile(i);
-					wsprintf(szIPP_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-					wsprintf(szIPS_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-					if(SsmIPRSendSession(pEvent->nReference, szIPP_Rec, pIPRecorderDlg->ChannelInfo[i].nFowardingPPort, 
-						szIPS_Rec, pIPRecorderDlg->ChannelInfo[i].nFowardingSPort) != 0)
-					{
-						SsmGetLastErrMsg(pIPRecorderDlg->szErrMsg);
-						GetLocalTime(&time);
-						wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, ", time.wMonth, time.wDay, time.wYear, 
-							time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, i);
-						strcat(szErrMsgDisplay, pIPRecorderDlg->szErrMsg);
-						pIPRecorderDlg->bErrorOccurred = TRUE;
-						pIPRecorderDlg->m_nRecordError++;
-					}
-					pIPRecorderDlg->ChannelInfo[i].nRecordingState = RECORDING_ACTIVED;
-				}
-				//used for shortel mgcp conference issuse
-				else if(pIPRecorderDlg->ChannelInfo[i].nRecordingState== RECORDING_ACTIVED) 
-				{
-					wsprintf(szIPP_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-					wsprintf(szIPS_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-						pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-					SsmIPRActiveSession(i, pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
-						szIPP_Rec, 0, &pSessionInfo->nFowardingPPort, pSessionInfo->nPrimaryCodec,
-						szIPS_Rec, 0, &pSessionInfo->nFowardingSPort, pSessionInfo->nSecondaryCodec);
-					SsmIPRSendSession(pEvent->nReference, szIPP_Rec, pSessionInfo->nFowardingPPort, 
-						szIPS_Rec, pSessionInfo->nFowardingSPort);
-				}
-				pIPRecorderDlg->ChannelInfo[i].dwSessionId = pSessionInfo->dwSessionId;
-				pIPRecorderDlg->ChannelInfo[i].bCallInfoUpdated = TRUE;
-				pIPRecorderDlg->ChannelInfo[pEvent->nReference].bCallInfoUpdated = TRUE;
-
-				pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
-			}
-			break;
-		case E_RCV_IPR_MEDIA_SESSION_STOPED:
-		case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:
-			if(pEvent->wEventCode == E_RCV_IPR_MEDIA_SESSION_STOPED)
-				wsprintf(szEvtName, "E_RCV_IPR_MEDIA_SESSION_STOPED");
-			else
-				wsprintf(szEvtName, "E_RCV_IPR_AUX_MEDIA_SESSION_STOPED");
-			pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
-			nPtlType = pEvent->dwXtraInfo >> 16;
-			nStationId = pEvent->dwXtraInfo & 0xffff;
-
-			pIPRecorderDlg->ChannelInfo[pEvent->nReference].dwSessionId = 0;
-			pIPRecorderDlg->ChannelInfo[pEvent->nReference].bCallInfoUpdated = TRUE;
-
-			bFind = FALSE;
-			for(i=0; i<pIPRecorderDlg->MaxLine; i++)
-			{
-				if(nPtlType == PTL_SIP && nStationId == 0xffff)
-				{
-					if(pIPRecorderDlg->ChannelInfo[i].nCallRef == pSessionInfo->nCallRef
-						&& pIPRecorderDlg->ChannelInfo[i].nChType == IPR_CH
-						&& pIPRecorderDlg->ChannelInfo[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
-					{
-						pIPRecorderDlg->ChannelInfo[i].dwSessionId = 0;
-						pIPRecorderDlg->ChannelInfo[i].bCallInfoUpdated = TRUE;
-						bFind = TRUE;
-						break;
-					}
-				}
-				else if(pIPRecorderDlg->ChannelInfo[i].nStationId == nStationId
-					&& pIPRecorderDlg->ChannelInfo[i].nChType == IPR_CH
-					&& pIPRecorderDlg->ChannelInfo[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
-				{
-					pIPRecorderDlg->ChannelInfo[i].dwSessionId = 0;
-					pIPRecorderDlg->ChannelInfo[i].bCallInfoUpdated = TRUE;
-					bFind = TRUE;
-					break;
-				}
-			} 
-
-			if(!bFind)
-			{
-				for(i=0; i<pIPRecorderDlg->MaxLine; i++)
-				{
-					if(pIPRecorderDlg->ChannelInfo[i].nStationId == nStationId
-						&& pIPRecorderDlg->ChannelInfo[i].nChType == IPR_CH
-						&& pIPRecorderDlg->ChannelInfo[i].dwSessionId == pSessionInfo->dwSessionId
-						&& pIPRecorderDlg->ChannelInfo[i].nRecordingCtrl == RECORDING_BASE_SESSION)
-					{
-						pIPRecorderDlg->ChannelInfo[i].dwSessionId = 0;
-						pIPRecorderDlg->ChannelInfo[i].bCallInfoUpdated = TRUE;
-						pIPRecorderDlg->ChannelInfo[i].nCallState = CALL_STATE_IDLE;
-						bFind = TRUE;
-						break;
-					}
-				} 
-			}
-
-			if(!bFind)
-			{
-				break;
-			}
-
-			if(pIPRecorderDlg->ChannelInfo[i].nCallState == CALL_STATE_IDLE && pIPRecorderDlg->ChannelInfo[i].nRecordingState != RECORDING_IDLE)
-			{
-				pIPRecorderDlg->ChannelInfo[i].dwSessionId = 0;
-				pIPRecorderDlg->ChannelInfo[i].nPtlType = -1;
-				pIPRecorderDlg->ChannelInfo[i].nStationId = -1;
-				wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPP, "");
-				wsprintf(pIPRecorderDlg->ChannelInfo[i].szIPS, "");
-				pIPRecorderDlg->ChannelInfo[i].nRecordingCtrl = -1;
-				pIPRecorderDlg->ChannelInfo[i].nRecSlaverId = -1;
-				if(SsmIPRDeActiveAndStopRecToFile(i) != 0)
+				wsprintf(szIPP_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+				wsprintf(szIPS_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
+					pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
+				if(SsmIPRSendSession(i, szIPP_Rec, pIPRecorderDlg->ChannelInfo[pEvent->nReference].nFowardingPPort, 
+					szIPS_Rec, pIPRecorderDlg->ChannelInfo[pEvent->nReference].nFowardingSPort) != 0)
 				{
 					SsmGetLastErrMsg(pIPRecorderDlg->szErrMsg);
 					GetLocalTime(&time);
@@ -1179,89 +1244,13 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					pIPRecorderDlg->bErrorOccurred = TRUE;
 					pIPRecorderDlg->m_nRecordError++;
 				}
-				pIPRecorderDlg->ChannelInfo[i].nRecordingState = RECORDING_IDLE;
-				pIPRecorderDlg->ChannelInfo[i].bCallInfoUpdated = TRUE;
-			}
-			else if(pIPRecorderDlg->ChannelInfo[i].nRecordingState == RECORDING_ACTIVED)
-			{
-				SsmPauseRecToFile(i);
-				pIPRecorderDlg->ChannelInfo[i].nRecordingState = RECORDING_PAUSED;
-			}
-			break;
-		case E_IPR_ACTIVE_AND_REC_CB:
-			wsprintf(szEvtName, "E_IPR_ACTIVE_AND_REC_CB");
-			if(pEvent->dwParam & 0xffff)	//error occurred
-			{
-				GetLocalTime(&time);
-				wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, recorder slaver return error, code = %d.", time.wMonth, time.wDay, time.wYear, 
-					time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, pEvent->nReference, pEvent->dwParam & 0xffff);
-				pIPRecorderDlg->bErrorOccurred = TRUE;
-				PCHANNEL_INFO pChannelInfo;
-				pChannelInfo = &(pIPRecorderDlg->ChannelInfo[pEvent->nReference]);
-				pChannelInfo->dwSessionId = 0;
-				pChannelInfo->nPtlType = -1;
-				pChannelInfo->nStationId = -1;
-				wsprintf(pChannelInfo->szIPP, "");
-				wsprintf(pChannelInfo->szIPS, "");
-				pChannelInfo->nRecordingCtrl = -1;
-				pChannelInfo->nRecSlaverId = -1;
-				pIPRecorderDlg->m_nRecordError++;
-				pChannelInfo->bCallInfoUpdated = TRUE;
-				break;
-			}
-			bFind = FALSE;
-			for(i=0; i<pIPRecorderDlg->MaxLine; i++)
-			{
-				if(pIPRecorderDlg->ChannelInfo[i].dwSessionId == pIPRecorderDlg->ChannelInfo[pEvent->nReference].dwSessionId 
-					&& pIPRecorderDlg->ChannelInfo[i].nChType == IPA_CH)
-				{
-					if(pIPRecorderDlg->ChannelInfo[i].dwSessionId)
-					{
-						bFind = TRUE;
-						break;
-					}
-				}
-			}
-			if(!bFind)
-				break;
-			nSlaverIndex = -1;
-			nSlaverId = pEvent->dwParam >> 16;
-			for(uc = 0; uc < pIPRecorderDlg->nSlaverCount; uc++)
-			{
-				if(pIPRecorderDlg->IPR_SlaverAddr[uc].nRecSlaverID == nSlaverId)
-				{
-					nSlaverIndex = uc;
-					break;
-				}
-			}
-			if(nSlaverIndex < 0)
-				break;
+				pIPRecorderDlg->m_nTotalFile++;
 
-			wsprintf(szIPP_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-			wsprintf(szIPS_Rec, "%d.%d.%d.%d", pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-				pIPRecorderDlg->IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-			if(SsmIPRSendSession(i, szIPP_Rec, pIPRecorderDlg->ChannelInfo[pEvent->nReference].nFowardingPPort, 
-				szIPS_Rec, pIPRecorderDlg->ChannelInfo[pEvent->nReference].nFowardingSPort) != 0)
-			{
-				SsmGetLastErrMsg(pIPRecorderDlg->szErrMsg);
-				GetLocalTime(&time);
-				wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, ", time.wMonth, time.wDay, time.wYear, 
-					time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, i);
-				strcat(szErrMsgDisplay, pIPRecorderDlg->szErrMsg);
-				pIPRecorderDlg->bErrorOccurred = TRUE;
-				pIPRecorderDlg->m_nRecordError++;
-			}
-			pIPRecorderDlg->m_nTotalFile++;
-
-			if((int)(pEvent->dwParam >> 16) == pIPRecorderDlg->IPR_SlaverAddr[pIPRecorderDlg->nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
-			{
-				pIPRecorderDlg->ScanSlaver();
-				pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
+				if((int)(pEvent->dwParam >> 16) == pIPRecorderDlg->IPR_SlaverAddr[pIPRecorderDlg->nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
+				{
+					pIPRecorderDlg->ScanSlaver();
+					pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
+				}
 			}
 			break;
 		case E_IPR_DEACTIVE_AND_STOPREC_CB:
@@ -1790,6 +1779,21 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 		}
 	}
 #pragma endregion ANALOG_RECORD
+#pragma region IPR
+	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
+	{
+		if(SsmIPRActiveAndRecToFile(i, IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
+			pSessionInfo->nPrimaryCodec, &pSessionInfo->nFowardingPPort, &pSessionInfo->nFowardingSPort, 
+			szFile, -1, 0, -1, -1, 0) != 0)
+		{
+			CString CErrMsg;
+			SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
+			CErrMsg.ReleaseBuffer();
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+			return false;
+		}
+	}
+#pragma endregion IPR
 	ChMap[nCh].tStartTime = CTime::GetCurrentTime();
 	ChMap[nCh].nRecordTimes++;
 	ChMap[nCh].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
@@ -1877,6 +1881,15 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	case E_RCV_IPR_STATION_ADDED:	return "E_RCV_IPR_STATION_ADDED";
 	case E_RCV_IPR_STATION_REMOVED:	return "E_RCV_IPR_STATION_REMOVED";
 	case E_RCV_IPR_AUTH_OVERFLOW:	return "E_RCV_IPR_AUTH_OVERFLOW";
+	case E_IPR_SLAVER_INIT_CB:		return "E_IPR_SLAVER_INIT_CB";
+	case E_IPR_START_SLAVER_CB:		return "E_IPR_START_SLAVER_CB";
+	case E_IPR_CLOSE_SLAVER_CB:		return "E_IPR_CLOSE_SLAVER_CB";
+	case E_RCV_IPR_MEDIA_SESSION_STARTED:return "E_RCV_IPR_MEDIA_SESSION_STARTED";
+	case E_RCV_IPR_AUX_MEDIA_SESSION_STARTED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STARTED";
+	case E_RCV_IPR_MEDIA_SESSION_STOPED:return "E_RCV_IPR_MEDIA_SESSION_STOPED";
+	case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STOPED";
+
+
 	default:
 		{
 			std::stringstream oss;
@@ -2779,4 +2792,16 @@ int CRecorderDlg::MySpyChToCic(int nCh)
 		LOG4CPLUS_DEBUG(log,"Ch:" << nCh << " change to cic nCic:" << nCic);
 	}
 	return nCic;
+}
+
+void CRecorderDlg::ScanSlaver() 
+{
+	// TODO: Add your control notification handler code here
+	int nActualSlaverCount;
+
+	nSlaverCount = SsmIPRGetRecSlaverCount(nIPRBoardId);
+	if(nSlaverCount)
+	{
+		SsmIPRGetRecSlaverList(nIPRBoardId, nSlaverCount, &nActualSlaverCount, &IPR_SlaverAddr[0]);
+	}
 }
