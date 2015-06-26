@@ -1239,25 +1239,22 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			}
 			break;
 #pragma endregion E_IPR_ACTIVE_AND_REC_CB
+#pragma region E_IPR_DEACTIVE_AND_STOPREC_CB
 		case E_IPR_DEACTIVE_AND_STOPREC_CB:
-			wsprintf(szEvtName, "E_IPR_DEACTIVE_AND_STOPREC_CB");
-			if(pEvent->dwParam & 0xffff)	//error occurred
 			{
-				GetLocalTime(&time);
-				wsprintf(szErrMsgDisplay, "%02d/%02d/%d %02d:%02d:%02d.%03d: ch = %d, recorder slaver return error, code = %d.", time.wMonth, time.wDay, time.wYear, 
-					time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, pEvent->nReference, pEvent->dwParam & 0xffff);
-				pIPRecorderDlg->bErrorOccurred = TRUE;
-				pIPRecorderDlg->m_nRecordError++;
-				break;
-			}
-
-			pIPRecorderDlg->ChannelInfo[pEvent->nReference].nStatistics++;
-			if((int)(pEvent->dwParam >> 16) == pIPRecorderDlg->IPR_SlaverAddr[pIPRecorderDlg->nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
-			{
-				pIPRecorderDlg->ScanSlaver();
-				pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
+				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+				if(pEvent->dwParam & 0xffff)	//error occurred
+				{
+					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",error code:"<< (int)(pEvent->dwParam & 0xffff));
+					break;
+				}
+				//if((int)(pEvent->dwParam >> 16) == IPR_SlaverAddr[This->nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
+				//{
+				//	ScanSlaver();
+				//}
 			}
 			break;
+#pragma endregion E_IPR_DEACTIVE_AND_STOPREC_CB
 		case E_IPR_LINK_REC_SLAVER_CONNECTED:
 			wsprintf(szEvtName, "E_IPR_LINK_REC_SLAVER_CONNECTED");
 			pIPRecorderDlg->ScanSlaver();//update recorder slaver resoures
@@ -1875,8 +1872,8 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	case E_RCV_IPR_MEDIA_SESSION_STOPED:return "E_RCV_IPR_MEDIA_SESSION_STOPED";
 	case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STOPED";
 	case E_IPR_ACTIVE_AND_REC_CB:	return "E_IPR_ACTIVE_AND_REC_CB";
-
-
+	case E_IPR_DEACTIVE_AND_STOPREC_CB:return "E_IPR_DEACTIVE_AND_STOPREC_CB";
+		
 	default:
 		{
 			std::stringstream oss;
