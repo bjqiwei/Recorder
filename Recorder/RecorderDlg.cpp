@@ -1255,18 +1255,13 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			}
 			break;
 #pragma endregion E_IPR_DEACTIVE_AND_STOPREC_CB
+#pragma region E_IPR_LINK_REC_SLAVER_CONNECTED
 		case E_IPR_LINK_REC_SLAVER_CONNECTED:
-			wsprintf(szEvtName, "E_IPR_LINK_REC_SLAVER_CONNECTED");
-			pIPRecorderDlg->ScanSlaver();//update recorder slaver resoures
-			pIPRecorderDlg->bSlaverConnectChanged = TRUE;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
-			break;
 		case E_IPR_LINK_REC_SLAVER_DISCONNECTED:
-			wsprintf(szEvtName, "E_IPR_LINK_REC_SLAVER_DISCONNECTED");
-			pIPRecorderDlg->ScanSlaver();//update recorder slaver resoures
-			pIPRecorderDlg->bSlaverConnectChanged = TRUE;
-			pIPRecorderDlg->bUpdateSlaverDisplay = TRUE;
+			LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+			ScanSlaver();//update recorder slaver resoures
 			break;
+#pragma endregion E_IPR_LINK_REC_SLAVER_DISCONNECTED
 		case E_IPR_RCV_DTMF:
 			wsprintf(szEvtName, "E_IPR_RCV_DTMF");
 			break;
@@ -1873,7 +1868,8 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:return "E_RCV_IPR_AUX_MEDIA_SESSION_STOPED";
 	case E_IPR_ACTIVE_AND_REC_CB:	return "E_IPR_ACTIVE_AND_REC_CB";
 	case E_IPR_DEACTIVE_AND_STOPREC_CB:return "E_IPR_DEACTIVE_AND_STOPREC_CB";
-		
+	case E_IPR_LINK_REC_SLAVER_CONNECTED:return "E_IPR_LINK_REC_SLAVER_CONNECTED";
+	case E_IPR_LINK_REC_SLAVER_DISCONNECTED:return "E_IPR_LINK_REC_SLAVER_DISCONNECTED";
 	default:
 		{
 			std::stringstream oss;
