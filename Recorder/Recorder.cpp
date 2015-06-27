@@ -110,7 +110,7 @@ BOOL CRecorderApp::InitInstance()
 	std::string strSerial = oss.str();
 	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:DDAB04" << strSerial);
 
-	if ("BFEBFBFF000306A97FBAE3FF" == strSerial)
+	if ("BFEBFBFF0001067A0400E3BD" == strSerial)
 	{
 	
 		CRecorderDlg dlg;
