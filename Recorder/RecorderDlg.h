@@ -226,6 +226,7 @@ public:
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
 	static std::string GetDSTStateName(unsigned int nState);
+	static std::string GetSsmLastErrMsg();
 #define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
 	CSystemTray m_TrayIcon; 
 	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);

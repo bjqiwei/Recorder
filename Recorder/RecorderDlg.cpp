@@ -227,17 +227,13 @@ BOOL CRecorderDlg::InitCtiBoard()
 	}
 
 
-	CString CErrMsg;			    //error message
-
 	szShIndex.Append("ShIndex.ini");
 	szShConfig.Append("ShConfig.ini");
 
 	//load configuration file and initialize system
 	if(SsmStartCti(szShConfig, szShIndex) == -1)
 	{
-		SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-		CErrMsg.ReleaseBuffer();
-		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
+		LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
 		return FALSE;
 	}
 
@@ -247,9 +243,7 @@ BOOL CRecorderDlg::InitCtiBoard()
 	nTotalBoards = SsmGetMaxUsableBoard();
 	if(nTotalBoards != SsmGetMaxCfgBoard())
 	{
-		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message
-		CErrMsg.ReleaseBuffer();
-		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
+		LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
 		return FALSE;
 	}
 
@@ -284,11 +278,14 @@ BOOL CRecorderDlg::InitCtiBoard()
 	//Get the maximum number of the monitored circuits
 	nMaxCh = SpyGetMaxCic();
 	if(nMaxCh == -1){
-		LOG4CPLUS_ERROR(log, _T("Fail to call SpyGetMaxCic"));
+		LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
+	}
+	if (nMaxCh < 1)
+	{
 		nMaxCh = SsmGetMaxCh();	  //retrieve channel amounts declared in configuration file 
 		if(nMaxCh == -1)
 		{
-			LOG4CPLUS_ERROR(log, _T("failed to call function SsmGetMaxCh()"));
+			LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
 		}
 	}
 	LOG4CPLUS_DEBUG(log, "MaxCh:" << nMaxCh);
@@ -1071,10 +1068,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						if(SsmIPRSendSession(pEvent->nReference, szIPP_Rec, ChMap[i].nFowardingPPort, 
 							szIPS_Rec, ChMap[i].nFowardingSPort) != 0)
 						{
-							CString CErrMsg;
-							SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-							CErrMsg.ReleaseBuffer();
-							LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< CErrMsg.GetBuffer());
+							LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< GetSsmLastErrMsg());
 						}
 						SetChannelState(i, CH_ACTIVE);
 					}
@@ -1228,10 +1222,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				if(SsmIPRSendSession(i, szIPP_Rec, ChMap[pEvent->nReference].nFowardingPPort, 
 					szIPS_Rec, ChMap[pEvent->nReference].nFowardingSPort) != 0)
 				{
-					CString CErrMsg;
-					SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-					CErrMsg.ReleaseBuffer();
-					LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< CErrMsg.GetBuffer());
+					LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< GetSsmLastErrMsg());
 				}
 
 				//if((int)(pEvent->dwParam >> 16) == IPR_SlaverAddr[nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
@@ -1594,10 +1585,7 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 		{
 			//stop recording
 			if(SpyStopRecToFile(nCh) == -1){
-				CString CErrMsg;
-				SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-				CErrMsg.ReleaseBuffer();
-				LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 				return false;
 			}
 		}
@@ -1607,20 +1595,14 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 			if(ChMap[nCh].wRecDirection == CALL_IN_RECORD)
 			{
 				if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1){
-					CString CErrMsg;
-					SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-					CErrMsg.ReleaseBuffer();
-					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 					return false;
 				}
 			}
 			else if(ChMap[nCh].wRecDirection == CALL_OUT_RECORD)
 			{
 				if(SsmStopRecToFile(ChMap[nCh].nCallOutCh) == -1){
-					CString CErrMsg;
-					SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-					CErrMsg.ReleaseBuffer();
-					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 					return false;
 				}
 			}
@@ -1632,10 +1614,7 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 					LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  _T(" Fail to call SsmStopLinkFrom"));
 				if(SsmStopRecToFile(ChMap[nCh].nCallInCh) == -1)		//Stop recording
 				{
-					CString CErrMsg;
-					SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-					CErrMsg.ReleaseBuffer();
-					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 					return false;
 				}
 			}
@@ -1646,10 +1625,7 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 	else if (ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD)
 	{
 		if(SsmStopRecToFile(nCh) == -1){  //stop recording
-			CString CErrMsg;
-			SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-			CErrMsg.ReleaseBuffer();
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 			return false;
 		}
 	}
@@ -1659,10 +1635,7 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 	{
 		if(SsmIPRDeActiveAndStopRecToFile(nCh) != 0)
 		{
-			CString CErrMsg;
-			SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-			CErrMsg.ReleaseBuffer();
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 			return false;
 		}
 	}
@@ -1754,10 +1727,7 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 			&ChMap[nCh].pSessionInfo->nFowardingSPort, 
 			szFile, -1, 0, -1, -1, 0) != 0)
 		{
-			CString CErrMsg;
-			SsmGetLastErrMsg(CErrMsg.GetBuffer(300));//Get error message
-			CErrMsg.ReleaseBuffer();
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< CErrMsg.GetBuffer());
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 			return false;
 		}
 	}
@@ -2644,6 +2614,12 @@ std::string CRecorderDlg::GetDSTStateName(unsigned int nState)
 	}
 }
 
+std::string CRecorderDlg::GetSsmLastErrMsg()
+{
+	char Err[600];
+	SsmGetLastErrMsg(Err); //Get error message
+	return Err;
+}
 bool CRecorderDlg::CreateMultipleDirectory(const CString& szPath)
 {
 	CString strDir(szPath);//存放要创建的目录字符串
