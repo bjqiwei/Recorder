@@ -599,25 +599,40 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode) << ",NewState:" << GetShStateName(nNewState));
 			switch(nNewState) 
 			{
+#pragma region S_CALL_STANDBY
 			case S_CALL_STANDBY:
 				{
-					if (ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD){
+					if (ChMap[nCh].nState == CH_RECORDING && ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD){
 						This->StopRecording(nCh);
 					}
 					ClearChVariable(nCh);
 					SetChannelState(nCh,CH_IDLE);
 				}
 				break;
+#pragma endregion S_CALL_STANDBY
+#pragma region S_CALL_RINGING
+			case S_CALL_RINGING:
+				{
+					SetChannelState(nCh,CH_RINGING);
+				}
+				break;
+#pragma endregion S_CALL_RINGING
+#pragma region S_CALL_PICKUPED
 			case S_CALL_PICKUPED:
 				{
-					SetChannelState(nCh, CH_PICKUP);
-					//receive CallerId
-					GetCallerAndCallee(nCh);
+					SetChannelState(nCh,CH_PICKUP);
+				}
+				break;
+#pragma endregion S_CALL_PICKUPED
+#pragma region S_CALL_TALKING
+			case S_CALL_TALKING:
+				{
 					if (This->StartRecording(nCh)){
 						SetChannelState(nCh, CH_RECORDING);
 					}
 				}
 				break;
+#pragma endregion S_CALL_TALKING
 			case S_CALL_OFFLINE:
 				{
 					This->StopRecording(nCh);
