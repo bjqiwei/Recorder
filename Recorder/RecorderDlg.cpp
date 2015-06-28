@@ -41,7 +41,7 @@ static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		
 static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
 static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, /* DTMFWidth,*/RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
-static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机","断线","不可用","通信中","使用","停止"};		
+static LPTSTR	StateName[] = {"空闲", "活动", "收号","振铃","通话","录音","摘机","断线","不可用","通信中","占用","停止"};		
 // CRecorderDlg 对话框
 
 
@@ -484,11 +484,11 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						//Start recording	
 						
 						//根据主被叫号码判断录音方向
-						if(!ChMap[nCic].szCallerId.Compare("4008001100")){
+						/*if(!ChMap[nCic].szCallerId.Compare("4008001100")){
 							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
 						}else{
 							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-						} 
+						} */
 
 
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
@@ -640,6 +640,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				}
 				break;
 #pragma endregion S_CALL_TALKING
+#pragma region S_CALL_OFFLINE
 			case S_CALL_OFFLINE:
 				{
 					This->StopRecording(nCh);
@@ -647,22 +648,38 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					SetChannelState(nCh,CH_OFFLINE);
 				}
 				break;
+#pragma endregion S_CALL_OFFLINE
+#pragma region S_CALL_UNAVAILABLE
 			case S_CALL_UNAVAILABLE:
 				{
 					SetChannelState(nCh,CH_UNAVAILABLE);
 				}
 				break;
+#pragma endregion S_CALL_UNAVAILABLE
+#pragma region S_IPR_COMMUNICATING
 			case S_IPR_COMMUNICATING:
 				{
 					SetChannelState(nCh, CH_COMMUNICATING);
 				}
 				break;
+#pragma endregion S_IPR_COMMUNICATING
+#pragma region S_IPR_USING
 			case S_IPR_USING:
 				{
 					SetChannelState(nCh, CH_USING);
 				}
 				break;
+#pragma endregion S_IPR_USING
+#pragma region default
+
+			default:
+				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << nCh << GetShStateName(nNewState)<< " do nothing.");
+				}
+				break;
+#pragma endregion default
 			}
+			This->UpdateCircuitListCtrl(nCh);
 		}
 		break;
 #pragma endregion E_CHG_ChState
@@ -1804,6 +1821,7 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	switch(nEvent){
 	case E_CHG_SpyState:					return "E_CHG_SpyState";
+	case E_CHG_ChState:						return "E_CHG_ChState";
 	case E_SYS_BargeIn:						return "E_SYS_BargeIn";
 	case E_SYS_NoSound:						return "E_SYS_NoSound";
 	case E_PROC_RecordEnd:					return "E_PROC_RecordEnd";
