@@ -51,6 +51,7 @@ CH_STRUCT CRecorderDlg::ChMap[MAX_CH];
 int CRecorderDlg::nIPRBoardId = -1;
 int CRecorderDlg::nIPABoardId = -1;
 int CRecorderDlg::nSlaverCount = 0;
+int CRecorderDlg::nIPRChNum = 0;
 IPR_SLAVERADDR CRecorderDlg::IPR_SlaverAddr[MAX_SLAVER_COUNT];
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
@@ -252,6 +253,7 @@ BOOL CRecorderDlg::InitCtiBoard()
 		if(SsmGetBoardModel(i) == 0xfd)	//IPRecorder card type is 0xfd
 		{
 			nIPRBoardId = i;
+			LOG4CPLUS_INFO(log, "IPRBoardId:" << nIPRBoardId);
 			break;
 		}
 	}
@@ -308,13 +310,16 @@ BOOL CRecorderDlg::InitCtiBoard()
 				LOG4CPLUS_INFO(log, "Ingore line voltage.");
 			}
 		}
-
-		if (ChMap[i].nChType == CH_TYPE_E1_RECORD)
+		else if (ChMap[i].nChType == CH_TYPE_E1_RECORD)
 		{
 			if((ChMap[i].nCallInCh = SpyGetCallInCh(i)) == -1)	//Get the number of incoming channel
 				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallInCh"));
 			if((ChMap[i].nCallOutCh = SpyGetCallOutCh(i)) == -1)//Get the number of outgoing channel
 				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallOutCh"));
+		}
+		else if (ChMap[i].nChType == CH_TYPE_IPR)
+		{
+			nIPRChNum++;
 		}
 		ChMap[i].nCallRef = -1;
 		ChMap[i].dwSessionId = 0;
@@ -888,9 +893,9 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							&& ChMap[i].nStationId == nStationId)
 						{
 							if(pEvent->dwParam == DE_RING_ON)
-								ChMap[i].nState = CH_RINGING;
+								SetChannelState(i,CH_RINGING);
 							else
-								ChMap[i].nState = CH_PICKUP;
+								SetChannelState(i, CH_PICKUP);
 							bFind = TRUE;
 							This->UpdateCircuitListCtrl(i);
 							break;
@@ -954,9 +959,9 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 									ChMap[i].nStationId = nStationId;
 									ChMap[i].nRecordingCtrl = RECORDING_BASE_DEVENT;
 									if(pEvent->dwParam == DE_RING_ON)
-										ChMap[i].nState = CH_RINGING;
+										SetChannelState(i,CH_RINGING);
 									else
-										ChMap[i].nState = CH_PICKUP;
+										SetChannelState(i,CH_PICKUP);
 									break;
 								}
 							}
@@ -990,8 +995,11 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_IPR_SLAVER_INIT_CB:
 		case E_IPR_START_SLAVER_CB:
 		case E_IPR_CLOSE_SLAVER_CB:
-			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode));
-			ScanSlaver();
+			{
+				int nSlaverId = pEvent->dwParam >> 16;
+				int nResult = pEvent->dwParam & 0xffff;
+				LOG4CPLUS_INFO(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << ", SlaverId:" << nSlaverId << ", result:" << GetSalverResultMsg(nResult));
+			}
 			break;
 #pragma endregion E_IPR_CLOSE_SLAVER_CB
 #pragma region E_RCV_IPR_MEDIA_SESSION_STARTED
@@ -1347,8 +1355,14 @@ void CRecorderDlg::OnDestroy()
 	// TODO: Add your message handler code here
 	//Close board driver
 	LOG4CPLUS_INFO(log,_T("Application exit..."));
+	for (int i = 0 ;i < nSlaverCount; i++)
+	{
+		if(SsmIPRCloseRecSlaver(nIPRBoardId, IPR_SlaverAddr[i].nRecSlaverID)<0)
+			LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
+	}
+	
 	if(SsmCloseCti() == -1)
-		LOG4CPLUS_ERROR(log,_T("Fail to call SsmCloseCti"));
+		LOG4CPLUS_ERROR(log,GetSsmLastErrMsg());
 	m_sqlServerDB.stopDataBaseThread();
 }
 
@@ -2640,6 +2654,40 @@ std::string CRecorderDlg::GetSsmLastErrMsg()
 	SsmGetLastErrMsg(Err); //Get error message
 	return Err;
 }
+
+std::string CRecorderDlg::GetSalverResultMsg(unsigned int result)
+{
+	switch(result)
+	{
+	case 0: return "成功";
+	case 1: return "未知";
+	case 2: return "超时";
+	case 3: return "报文数据异常";
+	case 4: return "该SessionId已处于活动中";
+	case 5: return "忙资源列表中找不到该SessionId";
+	case 6: return "创建新的Session失败";
+	case 7: return "文件创建失败";
+	case 8: return "找不到活动的SessionId";
+	case 9: return "该SessionId已处于录音中";
+	case 10: return "该SessionId已处于录音停止中";
+	case 11: return "该SessionId未处于录音状态"; 
+	case 12: return "该SessionId未处于录音到文件状态";
+	case 13: return "该SessionId未处于录音暂停状态";
+	case 14: return "要求录音的数据长度不够";
+	case 15: return "初始化WAV文件头出错";
+	case 16: return "该Slaver之前已经被分配过资源并开启";
+	case 17: return "申请资源过程失败";
+	case 18: return "该Slaver本来就没有被开启";
+	case 19: return "不支持的文件编码格式";
+	case 20: return "不支持的RTP";
+	case 21: return "没有足够的空闲资源";
+	default: {
+		std::stringstream oss;
+		oss << "unknown :"  << result;
+		return oss.str();
+	}
+	}
+}
 bool CRecorderDlg::CreateMultipleDirectory(const CString& szPath)
 {
 	CString strDir(szPath);//存放要创建的目录字符串
@@ -2765,11 +2813,31 @@ int CRecorderDlg::MySpyChToCic(int nCh)
 void CRecorderDlg::ScanSlaver() 
 {
 	// TODO: Add your control notification handler code here
+	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
 	int nActualSlaverCount;
 
 	nSlaverCount = SsmIPRGetRecSlaverCount(nIPRBoardId);
+	LOG4CPLUS_INFO(log, "SlaverCount:" << nSlaverCount);
 	if(nSlaverCount)
 	{
 		SsmIPRGetRecSlaverList(nIPRBoardId, nSlaverCount, &nActualSlaverCount, &IPR_SlaverAddr[0]);
+		nSlaverCount = nActualSlaverCount;
+		for (int i =0; i < nActualSlaverCount; i++)
+		{
+			int m_nInitTotalResources = nIPRChNum;
+			int m_nInitThreadPairs = nIPRChNum;
+			LOG4CPLUS_INFO(log, "Active Slaver:" << i << ", SlaverID:" << IPR_SlaverAddr[i].nRecSlaverID
+				<< ", " << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b1) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b2) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b3) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b4) << ":" << IPR_SlaverAddr[i].ipAddr.usPort
+				<< ", ThreadPairs:" << nIPRChNum
+				<< ", TotalResources:" << nIPRChNum
+				<< ", UsedResources:"<< IPR_SlaverAddr[i].nUsedResources );
+			
+			int nResult = SsmIPRStartRecSlaver(nIPRBoardId, IPR_SlaverAddr[i].nRecSlaverID, &m_nInitTotalResources, &m_nInitThreadPairs);
+			if(nResult < 0)
+			{
+				LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
+			}
+		}
+		
 	}
 }

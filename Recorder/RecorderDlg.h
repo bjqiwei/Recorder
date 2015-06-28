@@ -157,6 +157,7 @@ public:
 	static int   nIPRBoardId;
 	static int   nIPABoardId;
 	static int   nSlaverCount;
+	static int	 nIPRChNum;
 	static IPR_SLAVERADDR IPR_SlaverAddr[MAX_SLAVER_COUNT];
 private:
 	ULONGLONG m_freeCapacity;
@@ -219,6 +220,7 @@ public:
 	static std::string GetShStateName(unsigned int nState);
 	static std::string GetDSTStateName(unsigned int nState);
 	static std::string GetSsmLastErrMsg();
+	static std::string GetSalverResultMsg(unsigned int);
 #define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
 	CSystemTray m_TrayIcon; 
 	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);
