@@ -299,17 +299,14 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].nRecordTimes = 0;
 		ChMap[i].tStartTime = CTime::GetCurrentTime();
 		ChMap[i].nChType = SsmGetChType(i);
-		ChMap[i].CtrlState	= VOLTAGE_CTRL; 
+		ChMap[i].bIgnoreLineVoltage = false;
 		if (ChMap[i].nChType == CH_TYPE_ANALOG_RECORD)
 		{
 			int nResult = SsmGetIgnoreLineVoltage(i);
-			if(nResult == 0)	//detect voltage
-				ChMap[i].bIgnoreLineVoltage = false;
-			else if(nResult == 1)
+			if(nResult == 1){
 				ChMap[i].bIgnoreLineVoltage = true;
-		}
-		else{
-			ChMap[i].bIgnoreLineVoltage = false;
+				LOG4CPLUS_INFO(log, "Ingore line voltage.");
+			}
 		}
 
 		if (ChMap[i].nChType == CH_TYPE_E1_RECORD)
@@ -616,10 +613,8 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					SetChannelState(nCh, CH_PICKUP);
 					//receive CallerId
 					GetCallerAndCallee(nCh);
-					if(ChMap[nCh].CtrlState == VOLTAGE_CTRL){
-						if (This->StartRecording(nCh)){
-							SetChannelState(nCh, CH_RECORDING);
-						}
+					if (This->StartRecording(nCh)){
+						SetChannelState(nCh, CH_RECORDING);
 					}
 				}
 				break;
@@ -1273,26 +1268,11 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			{
 				if(ChMap[nCh].nState == CH_IDLE)
 				{
-					if((ChMap[nCh].CtrlState == VOICE_CTRL))
-					{
-						if(This->StartRecording(nCh)){
-							SetChannelState(nCh, CH_RECORDING);
-						}
+					if(This->StartRecording(nCh)){
+						SetChannelState(nCh, CH_RECORDING);
 					}
 				}
-			}
-			else if (pEvent->dwParam == 1)
-			{
-				if(ChMap[nCh].nState == CH_PICKUP)
-				{
-					if((ChMap[nCh].CtrlState == VOICE_CTRL))
-					{
-						if(This->StartRecording(nCh)){
-							SetChannelState(nCh, CH_RECORDING);
-						}
-					}
-				}
-			}			
+			}	
 		}
 		break;
 #pragma endregion E_SYS_BargeIn
@@ -1301,7 +1281,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		{
 			int nCh = pEvent->nReference; //wParam: number of channel output the event 
 			LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));
-			if (ChMap[nCh].bIgnoreLineVoltage && ChMap[nCh].CtrlState == VOICE_CTRL)
+			if (ChMap[nCh].bIgnoreLineVoltage)
 			{
 				This->StopRecording(nCh);
 				ClearChVariable(nCh);
