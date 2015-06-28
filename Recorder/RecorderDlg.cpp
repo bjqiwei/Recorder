@@ -498,6 +498,13 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					}
 					break;
 #pragma endregion Í¨»°
+#pragma region S_CALL_UNAVAILABLE
+				case S_CALL_UNAVAILABLE:
+					{
+						SetChannelState(nCic,CH_UNAVAILABLE);
+					}
+					break;
+#pragma endregion S_CALL_UNAVAILABLE
 #pragma region unknown
 				default:
 					{
