@@ -325,7 +325,6 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].dwSessionId = 0;
 		ChMap[i].nPtlType = -1;
 		ChMap[i].nStationId = -1;
-		ChMap[i].nRecordingCtrl = -1;
 		ChMap[i].nRecSlaverId = -1;
 		ChMap[i].nFowardingPPort = -1;
 		ChMap[i].nFowardingSPort = -1;
@@ -699,7 +698,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_RCV_IPR_DChannel:
 		{
 			int nCh = -1;
-			LOG4CPLUS_DEBUG(log,"SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
+			LOG4CPLUS_DEBUG(log,"Ch:" << pEvent->nReference<< ",SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
 			int nPtlType = pEvent->dwXtraInfo >> 16;
 			int nStationId = pEvent->dwXtraInfo & 0xffff;
 			switch(nPtlType) 
@@ -754,7 +753,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							DWORD dwTickCnt = GetTickCount();
 							if(ChMap[i].nChType ==  CH_TYPE_IPR
 								&& (
-								(ChMap[i].nRecordingCtrl == -1 && ChMap[i].nStationId == -1 && ChMap[i].nCallRef == -1)
+								(ChMap[i].nStationId == -1 && ChMap[i].nCallRef == -1)
 								|| (ChMap[i].nCallRef != -1 && ChMap[i].nState == CH_IDLE && (dwTickCnt - ChMap[i].dwActiveTime > 20000))
 								)
 								)
@@ -766,7 +765,6 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 										ChMap[i].szCallerId = pCallInfo->szCallerId;
 										ChMap[i].szCalleeId = pCallInfo->szCalledId;
 										ChMap[i].nStationId = nStationId;
-										ChMap[i].nRecordingCtrl = RECORDING_BASE_DEVENT;
 										ChMap[i].dwActiveTime = GetTickCount();
 										if(nStationId == 0xffff)	//sip trunk
 											ChMap[i].nCallRef = nCallRef;
@@ -856,8 +854,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					{
 						if(ChMap[i].nChType == CH_TYPE_IPR 
 							&& ChMap[i].nStationId == -1
-							&& ChMap[i].nCallRef == -1
-							&& ChMap[i].nRecordingCtrl == -1)
+							&& ChMap[i].nCallRef == -1)
 						{
 							if(SsmGetChState(i) == S_CALL_STANDBY)
 							{
@@ -866,7 +863,6 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 									ChMap[i].szCallerId = pCallInfo->szCallerId;
 									ChMap[i].szCalleeId = pCallInfo->szCalledId;
 									ChMap[i].nStationId = nStationId;
-									ChMap[i].nRecordingCtrl = RECORDING_BASE_DEVENT;
 									ChMap[i].nSCCPActiveCallref[0] = nCallRef;
 								}
 								break;
@@ -957,7 +953,6 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 								if(SsmGetChState(i) == S_CALL_STANDBY)
 								{
 									ChMap[i].nStationId = nStationId;
-									ChMap[i].nRecordingCtrl = RECORDING_BASE_DEVENT;
 									if(pEvent->dwParam == DE_RING_ON)
 										SetChannelState(i,CH_RINGING);
 									else
@@ -1004,63 +999,27 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma endregion E_IPR_CLOSE_SLAVER_CB
 #pragma region E_RCV_IPR_MEDIA_SESSION_STARTED
 		case E_RCV_IPR_MEDIA_SESSION_STARTED:
-		case E_RCV_IPR_AUX_MEDIA_SESSION_STARTED:
+		//case E_RCV_IPR_AUX_MEDIA_SESSION_STARTED:
 			{
 				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
-				int nPtlType = pEvent->dwXtraInfo >> 16;
-				int nStationId = pEvent->dwXtraInfo & 0xffff;
-				ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-
+				ScanSlaver();
 				if(nSlaverCount > 0)
 				{
 					BOOL bFind = FALSE;
 					int i = 0;
 					for(i=0; i<nMaxCh; i++)
 					{
-						if(ChMap[i].nChType == CH_TYPE_IPR)
+						if(ChMap[i].nChType == CH_TYPE_IPR && SsmGetChState(i) == S_CALL_STANDBY)
 						{
-							if(nPtlType == PTL_SIP && nStationId == 0xffff)
-							{
-								if(ChMap[i].nCallRef == pSessionInfo->nCallRef)
-								{
-									ChMap[i].szIPP.Empty();
-									ChMap[i].szIPS.Empty();
-									bFind = TRUE;
-									break;
-								}
-							}
-							else if(ChMap[i].nStationId == nStationId)
-							{
-								ChMap[i].szIPP.Empty();
-								ChMap[i].szIPS.Empty();
-								bFind = TRUE;
-								break;
-							}
+							bFind = TRUE;
+							break;	
 						}
 					}
 					if(!bFind)
 					{
-						for(i=0; i< nMaxCh; i++)
-						{
-							if(ChMap[i].nChType == CH_TYPE_IPR 
-								&& ChMap[i].nStationId == -1
-								&& ChMap[i].dwSessionId == 0)
-							{
-								if(SsmGetChState(i) == S_CALL_STANDBY)
-								{
-									ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
-									ChMap[i].nRecordingCtrl = RECORDING_BASE_SESSION;
-									SetChannelState(i, CH_ACTIVE);
-									bFind = TRUE;
-									break;
-								}
-							}
-						}
-					}
-
-					if(!bFind)
-					{
+						ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
+						LOG4CPLUS_ERROR(log, " not find idle IPR channel, SessionId:" << pSessionInfo->dwSessionId);
 						break;
 					}
 
@@ -1078,8 +1037,10 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							break;
 						}
 					}
-					if(nSlaverIndex < 0)
+					if(nSlaverIndex < 0){
+						LOG4CPLUS_ERROR(log, "not find idle Slaver, SessionId:" << pSessionInfo->dwSessionId);
 						break;
+					}
 
 					if(ChMap[i].nState == CH_IDLE)
 					{
@@ -1089,54 +1050,19 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							SetChannelState(i, CH_RECORDING);
 						}
 					
-						ChMap[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
-						ChMap[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
+						ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
+						ChMap[pEvent->nReference].nFowardingPPort = pSessionInfo->nFowardingPPort;
+						ChMap[pEvent->nReference].nFowardingSPort = pSessionInfo->nFowardingSPort;
 						ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
+						ChMap[i].nCallRef = pSessionInfo->nCallRef;
+						ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 						ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
 						ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
 					}
-					else if(ChMap[i].nState == CH_PAUSED)
-					{
-						SsmRestartRecToFile(i);
-						char szIPP_Rec[50], szIPS_Rec[50];
-						wsprintf(szIPP_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-						wsprintf(szIPS_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-						if(SsmIPRSendSession(pEvent->nReference, szIPP_Rec, ChMap[i].nFowardingPPort, 
-							szIPS_Rec, ChMap[i].nFowardingSPort) != 0)
-						{
-							LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< GetSsmLastErrMsg());
-						}
-						SetChannelState(i, CH_ACTIVE);
-					}
-					//used for shortel mgcp conference issuse
-					else if(ChMap[i].nState== CH_ACTIVE) 
-					{
-						char szIPP_Rec[50], szIPS_Rec[50];
-						wsprintf(szIPP_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-						wsprintf(szIPS_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-							IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-						SsmIPRActiveSession(i, IPR_SlaverAddr[nSlaverIndex].nRecSlaverID, pSessionInfo->dwSessionId,
-							szIPP_Rec, 0, &pSessionInfo->nFowardingPPort, pSessionInfo->nPrimaryCodec,
-							szIPS_Rec, 0, &pSessionInfo->nFowardingSPort, pSessionInfo->nSecondaryCodec);
-						SsmIPRSendSession(pEvent->nReference, szIPP_Rec, pSessionInfo->nFowardingPPort, 
-							szIPS_Rec, pSessionInfo->nFowardingSPort);
-					}
-					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 				}
 			}
 			break;
-#pragma endregion E_RCV_IPR_AUX_MEDIA_SESSION_STARTED
+#pragma endregion E_RCV_IPR_MEDIA_SESSION_STARTED
 #pragma region E_RCV_IPR_MEDIA_SESSION_STOPED
 		case E_RCV_IPR_MEDIA_SESSION_STOPED:
 		case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:
@@ -1156,8 +1082,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					if(nPtlType == PTL_SIP && nStationId == 0xffff)
 					{
 						if(ChMap[i].nCallRef == pSessionInfo->nCallRef
-							&& ChMap[i].nChType == CH_TYPE_IPR
-							&& ChMap[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
+							&& ChMap[i].nChType == CH_TYPE_IPR)
 						{
 							ChMap[i].dwSessionId = 0;
 							bFind = TRUE;
@@ -1165,8 +1090,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						}
 					}
 					else if(ChMap[i].nStationId == nStationId
-						&& ChMap[i].nChType == CH_TYPE_IPR
-						&& ChMap[i].nRecordingCtrl == RECORDING_BASE_DEVENT)
+						&& ChMap[i].nChType == CH_TYPE_IPR)
 					{
 						ChMap[i].dwSessionId = 0;
 						bFind = TRUE;
@@ -1180,8 +1104,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					{
 						if(ChMap[i].nStationId == nStationId
 							&& ChMap[i].nChType == CH_TYPE_IPR
-							&& ChMap[i].dwSessionId == pSessionInfo->dwSessionId
-							&& ChMap[i].nRecordingCtrl == RECORDING_BASE_SESSION)
+							&& ChMap[i].dwSessionId == pSessionInfo->dwSessionId)
 						{
 							ChMap[i].dwSessionId = 0;
 							SetChannelState(i, CH_IDLE);
@@ -1295,6 +1218,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_IPR_LINK_REC_SLAVER_DISCONNECTED:
 			LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 			ScanSlaver();//update recorder slaver resoures
+			StartSlaver();
 			break;
 #pragma endregion E_IPR_LINK_REC_SLAVER_DISCONNECTED
 #pragma region E_IPR_RCV_DTMF
@@ -1340,7 +1264,7 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		default:
 		{
 			INT32 nCh= pEvent->nReference;
-			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << std::hex << nEventCode);
+			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << GetShEventName(nEventCode));
 		}
 		break;
 	}
@@ -1829,7 +1753,6 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 	//ChMap[nCh].nCallRef = -1;
 	ChMap[nCh].szIPP.Empty();
 	ChMap[nCh].szIPS.Empty();
-	ChMap[nCh].nRecordingCtrl = -1;
 	ChMap[nCh].nRecSlaverId = -1;
 }
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
@@ -2814,30 +2737,37 @@ void CRecorderDlg::ScanSlaver()
 {
 	// TODO: Add your control notification handler code here
 	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
-	int nActualSlaverCount;
 
 	nSlaverCount = SsmIPRGetRecSlaverCount(nIPRBoardId);
 	LOG4CPLUS_INFO(log, "SlaverCount:" << nSlaverCount);
 	if(nSlaverCount)
 	{
-		SsmIPRGetRecSlaverList(nIPRBoardId, nSlaverCount, &nActualSlaverCount, &IPR_SlaverAddr[0]);
-		nSlaverCount = nActualSlaverCount;
-		for (int i =0; i < nActualSlaverCount; i++)
+		SsmIPRGetRecSlaverList(nIPRBoardId, nSlaverCount, &nSlaverCount, &IPR_SlaverAddr[0]);
+
+		for (int i =0; i < nSlaverCount; i++)
 		{
-			int m_nInitTotalResources = nIPRChNum;
-			int m_nInitThreadPairs = nIPRChNum;
+
 			LOG4CPLUS_INFO(log, "Active Slaver:" << i << ", SlaverID:" << IPR_SlaverAddr[i].nRecSlaverID
 				<< ", " << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b1) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b2) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b3) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b4) << ":" << IPR_SlaverAddr[i].ipAddr.usPort
-				<< ", ThreadPairs:" << nIPRChNum
-				<< ", TotalResources:" << nIPRChNum
+				<< ", ThreadPairs:" << IPR_SlaverAddr[i].nThreadPairs
+				<< ", TotalResources:" << IPR_SlaverAddr[i].nTotalResources
 				<< ", UsedResources:"<< IPR_SlaverAddr[i].nUsedResources );
-			
-			int nResult = SsmIPRStartRecSlaver(nIPRBoardId, IPR_SlaverAddr[i].nRecSlaverID, &m_nInitTotalResources, &m_nInitThreadPairs);
-			if(nResult < 0)
-			{
-				LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
-			}
 		}
-		
+	}
+}
+
+void CRecorderDlg::StartSlaver()
+{
+	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
+	for (int i =0; i < nSlaverCount; i++)
+	{
+		int m_nInitTotalResources = nIPRChNum;
+		int m_nInitThreadPairs = nIPRChNum;
+		LOG4CPLUS_DEBUG(log, "Start Slaver:" << i << ", SlaverID:" << IPR_SlaverAddr[i].nRecSlaverID);
+		int nResult = SsmIPRStartRecSlaver(nIPRBoardId, IPR_SlaverAddr[i].nRecSlaverID, &m_nInitTotalResources, &m_nInitThreadPairs);
+		if(nResult < 0)
+		{
+			LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
+		}
 	}
 }

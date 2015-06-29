@@ -114,7 +114,6 @@ typedef struct tagCH_STRUCT
 	int			nFowardingSPort;			//		Secondary forwarding port
 	CString		szIPP;			//		IP address of primary
 	CString		szIPS;			//		IP address of slavery
-	int			nRecordingCtrl;				//		Recording controlled by DChannel event or just by session
 	int			nRecSlaverId;				//		Destination Slaver
 	DWORD		dwActiveTime;				//		the time enter active
 	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
@@ -214,6 +213,7 @@ public:
 	static void GetCallerAndCallee(unsigned long nIndex);
 	static void ClearChVariable(unsigned long nCh);
 	static void ScanSlaver();
+	static void StartSlaver();
 	bool CreateMultipleDirectory(const CString& szPath);
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
