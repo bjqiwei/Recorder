@@ -411,7 +411,7 @@ void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 }
 
 
-int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
+int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 {
 	// TODO: Add your specialized code here and/or call the base class
 
@@ -1042,23 +1042,21 @@ int CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						break;
 					}
 
-					if(ChMap[i].nState == CH_IDLE)
-					{
-						ChMap[i].pSessionInfo = pSessionInfo;
-						ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
-						if(This->StartRecording(i)){
-							SetChannelState(i, CH_RECORDING);
-						}
-					
-						ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-						ChMap[pEvent->nReference].nFowardingPPort = pSessionInfo->nFowardingPPort;
-						ChMap[pEvent->nReference].nFowardingSPort = pSessionInfo->nFowardingSPort;
-						ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
-						ChMap[i].nCallRef = pSessionInfo->nCallRef;
-						ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
-						ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
-						ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
+					ChMap[i].pSessionInfo = pSessionInfo;
+					ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
+					if(This->StartRecording(i)){
+						SetChannelState(i, CH_RECORDING);
 					}
+
+					ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
+					ChMap[pEvent->nReference].nFowardingPPort = pSessionInfo->nFowardingPPort;
+					ChMap[pEvent->nReference].nFowardingSPort = pSessionInfo->nFowardingSPort;
+					ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
+					ChMap[i].nCallRef = pSessionInfo->nCallRef;
+					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
+					ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
+					ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
+					LOG4CPLUS_ERROR(log, "Start record, SessionId:" << pSessionInfo->dwSessionId);
 				}
 			}
 			break;
@@ -2768,6 +2766,11 @@ void CRecorderDlg::StartSlaver()
 		if(nResult < 0)
 		{
 			LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
+		}
+		else{
+			LOG4CPLUS_INFO(log, "Start Slaver:" << i << ", SlaverID:" << IPR_SlaverAddr[i].nRecSlaverID<< ", " << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b1) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b2) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b3) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b4) << ":" << IPR_SlaverAddr[i].ipAddr.usPort
+				<< ", ThreadPairs:" << m_nInitThreadPairs
+				<< ", TotalResources:" << m_nInitTotalResources );
 		}
 	}
 }
