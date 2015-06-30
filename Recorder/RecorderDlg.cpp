@@ -1058,16 +1058,52 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					int i = 0;
 					for(i=0; i<nMaxCh; i++)
 					{
-						if(ChMap[i].nChType == CH_TYPE_IPR && SsmGetChState(i) == S_CALL_STANDBY)
+						if(ChMap[i].nChType == CH_TYPE_IPR)
 						{
-							bFind = TRUE;
-							break;	
+							if(nPtlType == PTL_SIP && nStationId == 0xffff)
+							{
+								if(ChMap[i].nCallRef == pSessionInfo->nCallRef)
+								{
+									ChMap[i].szIPP.Empty();
+									ChMap[i].szIPS.Empty();
+									bFind = TRUE;
+									break;
+								}
+							}
+							else if(ChMap[i].nStationId == nStationId)
+							{
+								ChMap[i].szIPP.Empty();
+								ChMap[i].szIPS.Empty();
+								bFind = TRUE;
+								break;
+							}
 						}
 					}
+					if (!bFind)
+					{
+						for(i=0; i<nMaxCh; i++)
+						{
+							if(ChMap[i].nChType == CH_TYPE_IPR 
+								&& ChMap[i].nStationId == -1
+								&& ChMap[i].dwSessionId == 0)
+							{
+								if(SsmGetChState(i) == S_CALL_STANDBY)
+								{
+									ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
+									ChMap[i].nStationId = nStationId;
+									ChMap[i].nCallRef = pSessionInfo->nCallRef;
+									bFind = TRUE;
+									break;
+								}
+							}
+						}
+					}
+
 					if(!bFind)
 					{
-						ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId << " not find idle IPR channel");
+						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
+							<< ",CallRef:" << pSessionInfo->nCallRef
+							<< ",StationId:" << nStationId << " not find idle IPR channel");
 						break;
 					}
 
@@ -1086,7 +1122,9 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						}
 					}
 					if(nSlaverIndex < 0){
-						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << "not find idle Slaver, SessionId:" << pSessionInfo->dwSessionId);
+						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
+							<< ",CallRef:" << pSessionInfo->nCallRef
+							<< ",StationId:" << nStationId << "not find idle Slaver");
 						break;
 					}
 
@@ -1099,12 +1137,13 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 					ChMap[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
 					ChMap[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
-					ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
 					ChMap[i].nCallRef = pSessionInfo->nCallRef;
 					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 					ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
 					ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
-					LOG4CPLUS_INFO(log, "Ch:" << pEvent->nReference << "Start record, SessionId:" << pSessionInfo->dwSessionId);
+					LOG4CPLUS_INFO(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
+						<< ",CallRef:" << pSessionInfo->nCallRef
+						<< ",StationId:" << nStationId<< " Start record");
 				}
 			}
 			break;
