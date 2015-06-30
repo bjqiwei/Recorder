@@ -1164,7 +1164,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 				if(pEvent->dwParam & 0xffff)	//error occurred
 				{
-					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",error code:"<< (int)(pEvent->dwParam & 0xffff));
+					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",error code:"<< (int)(pEvent->dwParam & 0xffff) << ",SessionId:" << pEvent->dwSubReason);
 					ClearChVariable(pEvent->nReference);
 					break;
 				}
@@ -1172,49 +1172,28 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				int i = 0;
 				for(i=0; i<nMaxCh; i++)
 				{
-					if(ChMap[i].dwSessionId == ChMap[pEvent->nReference].dwSessionId && ChMap[i].nChType == CH_TYPE_IPR)
+					if(ChMap[i].dwSessionId && ChMap[i].dwSessionId == ChMap[pEvent->nReference].dwSessionId && ChMap[i].nChType == CH_TYPE_IPA)
 					{
-						if(ChMap[i].dwSessionId)
-						{
-							bFind = TRUE;
-							break;
-						}
-					}
-				}
-				if(!bFind)
-					break;
-				int nSlaverIndex = -1;
-				int nSlaverId = pEvent->dwParam >> 16;
-				for(int uc = 0; uc < nSlaverCount; uc++)
-				{
-					if(IPR_SlaverAddr[uc].nRecSlaverID == nSlaverId)
-					{
-						nSlaverIndex = uc;
+						bFind = TRUE;
 						break;
 					}
 				}
-				if(nSlaverIndex < 0)
+				if(!bFind){
+					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << "not find binding IPA channel");
 					break;
+				}else{
+					LOG4CPLUS_INFO(log,"Ch:" << pEvent->nReference << "find binding IPA channel:" << i);
+				}
 
-				char szIPP_Rec[50], szIPS_Rec[50];
-				wsprintf(szIPP_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-				wsprintf(szIPS_Rec, "%d.%d.%d.%d", IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b1, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b2, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b3, 
-					IPR_SlaverAddr[nSlaverIndex].ipAddr.S_un_b.s_b4);
-				if(SsmIPRSendSession(i, szIPP_Rec, ChMap[pEvent->nReference].nFowardingPPort, 
-					szIPS_Rec, ChMap[pEvent->nReference].nFowardingSPort) != 0)
+				if(SsmIPRSendSession(i, ChMap[pEvent->nReference].szIPP.GetBuffer(), ChMap[pEvent->nReference].nFowardingPPort, 
+					ChMap[pEvent->nReference].szIPS.GetBuffer(), ChMap[pEvent->nReference].nFowardingSPort) != 0)
 				{
 					LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< GetSsmLastErrMsg());
 				}
-
-				//if((int)(pEvent->dwParam >> 16) == IPR_SlaverAddr[nSlaverSelectedIndex].nRecSlaverID)//update recorder slaver resoures
-				//{
-				//	ScanSlaver();
-				//}
+				else{
+					LOG4CPLUS_INFO(log,"Ch:" << i << " SendSession to " << ChMap[pEvent->nReference].szIPP.GetBuffer() << ":" << ChMap[pEvent->nReference].nFowardingPPort
+						<<"; " << ChMap[pEvent->nReference].szIPS.GetBuffer() <<":"<<  ChMap[pEvent->nReference].nFowardingSPort);
+				}
 			}
 			break;
 #pragma endregion E_IPR_ACTIVE_AND_REC_CB
