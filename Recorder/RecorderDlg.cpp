@@ -694,7 +694,16 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			case PTL_SIP:
 				if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_REJECTED)
 				{
+					LOG4CPLUS_DEBUG(log, "PTL_SIP");
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
+					pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
+					LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
+						<<",CallSource:" << pCallInfo->CallSource
+						<<",Cause:" << pCallInfo->Cause
+						<<",CallerId:" << pCallInfo->szCallerId
+						<< ",CalledId:" << pCallInfo->szCalledId
+						<< ",ReferredBy:" << pCallInfo->szReferredBy
+						<<", ReferTo:" << pCallInfo->szReferTo);
 					ULONG nCallRef = pCallInfo->CallRef;
 					BOOL bFind = FALSE;
 					for(int nIndex =0; nIndex<nMaxCh; nIndex++)
@@ -768,6 +777,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case PTL_CISCO_SKINNY:
 			if(pEvent->dwParam == DE_CISCO_SCCP_CALL_INFO)	//for cisco skinny get callerid and calledid
 			{
+				LOG4CPLUS_DEBUG(log, "PTL_CISCO_SKINNY");
 				PIPR_CISCO_SCCP_CALL_INFO pSCCPInfo = (PIPR_CISCO_SCCP_CALL_INFO)pEvent->pvBuffer;
 				for(int i=0; i<nMaxCh; i++)
 				{
@@ -783,6 +793,13 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			else if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_REJECTED)
 			{
 				PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
+				LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
+					<<",CallSource:" << pCallInfo->CallSource
+					<<",Cause:" << pCallInfo->Cause
+					<<",CallerId:" << pCallInfo->szCallerId
+					<< ",CalledId:" << pCallInfo->szCalledId
+					<< ",ReferredBy:" << pCallInfo->szReferredBy
+					<<", ReferTo:" << pCallInfo->szReferTo);
 				ULONG nCallRef = pCallInfo->CallRef;
 				BOOL bFind = FALSE;
 				for(int i=0; i<nMaxCh; i++)
@@ -867,6 +884,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				|| pEvent->dwParam == DE_RING_ON
 				|| pEvent->dwParam == DE_RING_OFF)	//control by dchannnel event example
 			{
+				LOG4CPLUS_DEBUG(log, "Other Control");
 				BOOL bFind = FALSE;
 				if(pEvent->dwParam == DE_OFFHOOK || pEvent->dwParam == DE_RING_ON)
 				{
@@ -972,18 +990,18 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				StationInfoEx StationInfoEx;
 				SsmIPRGetStationInfoEx(nIPABoardId, pEvent->dwXtraInfo & 0xffff, &StationInfoEx);
 				LOG4CPLUS_INFO(log,"SanHui nEventCode:" << GetShEventName(nEventCode) << " StationId:" << StationInfoEx.nStationId 
-					<< " Call Ctrl Protocal: " << StationInfoEx.ucCallCtrlPtl
-					<< " IP: "<< StationInfoEx.CallCtrlAddr.S_un_b.s_b1 << "." 
-					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b2 << "."
-					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b3 << "."
-					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b4
+					<< " Call Ctrl Protocal: " << (int)StationInfoEx.ucCallCtrlPtl
+					<< " IP: "<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b1 << "." 
+					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b2 << "."
+					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b3 << "."
+					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b4
 					<< ":" << StationInfoEx.CallCtrlAddr.usPort
-					<< " MAC: " << std::hex <<StationInfoEx.ucMacAddr[0] << "-"
-					<< StationInfoEx.ucMacAddr[1] << "-"
-					<< StationInfoEx.ucMacAddr[2] << "-" 
-					<< StationInfoEx.ucMacAddr[3] << "-"
-					<< StationInfoEx.ucMacAddr[4] << "-"
-					<< StationInfoEx.ucMacAddr[5]);
+					<< " MAC: " << std::hex <<(int)StationInfoEx.ucMacAddr[0] << "-"
+					<< (int)StationInfoEx.ucMacAddr[1] << "-"
+					<< (int)StationInfoEx.ucMacAddr[2] << "-" 
+					<< (int)StationInfoEx.ucMacAddr[3] << "-"
+					<< (int)StationInfoEx.ucMacAddr[4] << "-"
+					<< (int)StationInfoEx.ucMacAddr[5]);
 				}
 			break;
 		case E_RCV_IPR_STATION_REMOVED:
@@ -2739,12 +2757,20 @@ void CRecorderDlg::ScanSlaver()
 
 		for (int i =0; i < nSlaverCount; i++)
 		{
-
+			COMPUTER_INFO ComputerInfo;
+			BOOL bStartd;
+			SsmIPRGetRecSlaverInfo(nIPRBoardId,IPR_SlaverAddr[i].nRecSlaverID, &bStartd,
+				&IPR_SlaverAddr[i].nTotalResources,
+				&IPR_SlaverAddr[i].nUsedResources,
+				&IPR_SlaverAddr[i].nThreadPairs,
+				&ComputerInfo);
 			LOG4CPLUS_INFO(log, "Active Slaver:" << i << ", SlaverID:" << IPR_SlaverAddr[i].nRecSlaverID
-				<< ", " << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b1) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b2) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b3) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b4) << ":" << IPR_SlaverAddr[i].ipAddr.usPort
+				<< ", Start:" << bStartd
+				<< ",IP:" << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b1) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b2) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b3) << "." << (int)(IPR_SlaverAddr[i].ipAddr.S_un_b.s_b4) << ":" << IPR_SlaverAddr[i].ipAddr.usPort
 				<< ", ThreadPairs:" << IPR_SlaverAddr[i].nThreadPairs
 				<< ", TotalResources:" << IPR_SlaverAddr[i].nTotalResources
-				<< ", UsedResources:"<< IPR_SlaverAddr[i].nUsedResources );
+				<< ", UsedResources:"<< IPR_SlaverAddr[i].nUsedResources 
+				<< ",IPAddr:" << ComputerInfo.szIPAddr);
 		}
 	}
 }
