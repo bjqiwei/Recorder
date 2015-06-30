@@ -694,7 +694,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			case PTL_SIP:
 				if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_REJECTED)
 				{
-					LOG4CPLUS_DEBUG(log, "PTL_SIP");
+					//LOG4CPLUS_DEBUG(log, "PTL_SIP");
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 					pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 					LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
@@ -784,7 +784,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case PTL_CISCO_SKINNY:
 			if(pEvent->dwParam == DE_CISCO_SCCP_CALL_INFO)	//for cisco skinny get callerid and calledid
 			{
-				LOG4CPLUS_DEBUG(log, "PTL_CISCO_SKINNY");
+				//LOG4CPLUS_DEBUG(log, "PTL_CISCO_SKINNY");
 				PIPR_CISCO_SCCP_CALL_INFO pSCCPInfo = (PIPR_CISCO_SCCP_CALL_INFO)pEvent->pvBuffer;
 				for(int i=0; i<nMaxCh; i++)
 				{
@@ -901,7 +901,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				|| pEvent->dwParam == DE_RING_ON
 				|| pEvent->dwParam == DE_RING_OFF)	//control by dchannnel event example
 			{
-				LOG4CPLUS_DEBUG(log, "Other Control");
+				//sLOG4CPLUS_DEBUG(log, "Other Control");
 				BOOL bFind = FALSE;
 				if(pEvent->dwParam == DE_OFFHOOK || pEvent->dwParam == DE_RING_ON)
 				{
@@ -1051,12 +1051,12 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
 				int nPtlType = pEvent->dwXtraInfo >> 16;
 				int nStationId = pEvent->dwXtraInfo & 0xffff;
-				LOG4CPLUS_DEBUG(log,  "CallRef:" << pSessionInfo->nCallRef
+				LOG4CPLUS_DEBUG(log,  "Ch:" << pEvent->nReference << "CallRef:" << pSessionInfo->nCallRef
 					<< ",StationId:" << nStationId 
 					<< ",SessionId:" << pSessionInfo->dwSessionId
 					<< ",PrimaryIP:" << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->PrimaryAddr.usPort
 					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
-					<< ",SecondaryIP:" << pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
+					<< ",SecondaryIP:" << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
 					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
 				ScanSlaver();
 				if(nSlaverCount > 0)
@@ -1074,7 +1074,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					if(!bFind)
 					{
 						ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-						LOG4CPLUS_ERROR(log, " not find idle IPR channel, SessionId:" << pSessionInfo->dwSessionId);
+						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << " not find idle IPR channel, SessionId:" << pSessionInfo->dwSessionId);
 						break;
 					}
 
@@ -1093,7 +1093,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						}
 					}
 					if(nSlaverIndex < 0){
-						LOG4CPLUS_ERROR(log, "not find idle Slaver, SessionId:" << pSessionInfo->dwSessionId);
+						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << "not find idle Slaver, SessionId:" << pSessionInfo->dwSessionId);
 						break;
 					}
 
@@ -1103,15 +1103,15 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						SetChannelState(i, CH_RECORDING);
 					}
 
-					ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
-					ChMap[pEvent->nReference].nFowardingPPort = pSessionInfo->nFowardingPPort;
-					ChMap[pEvent->nReference].nFowardingSPort = pSessionInfo->nFowardingSPort;
+					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
+					ChMap[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
+					ChMap[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
 					ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
 					ChMap[i].nCallRef = pSessionInfo->nCallRef;
 					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 					ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
 					ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
-					LOG4CPLUS_ERROR(log, "Start record, SessionId:" << pSessionInfo->dwSessionId);
+					LOG4CPLUS_INFO(log, "Ch:" << pEvent->nReference << "Start record, SessionId:" << pSessionInfo->dwSessionId);
 				}
 			}
 			break;
@@ -1221,7 +1221,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << "not find binding IPA channel");
 					break;
 				}else{
-					LOG4CPLUS_INFO(log,"Ch:" << pEvent->nReference << "find binding IPA channel:" << i);
+					LOG4CPLUS_INFO(log,"Ch:" << pEvent->nReference << " find binding IPA channel:" << i);
 				}
 
 				if(SsmIPRSendSession(i, ChMap[pEvent->nReference].szIPP.GetBuffer(), ChMap[pEvent->nReference].nFowardingPPort, 
