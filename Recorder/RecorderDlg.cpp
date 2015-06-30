@@ -698,7 +698,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_RCV_IPR_DChannel:
 		{
 			int nCh = -1;
-			LOG4CPLUS_DEBUG(log,"Ch:" << pEvent->nReference<< ",SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
+			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
 			int nPtlType = pEvent->dwXtraInfo >> 16;
 			int nStationId = pEvent->dwXtraInfo & 0xffff;
 			switch(nPtlType) 
@@ -976,9 +976,32 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		case E_RCV_IPA_DONGLE_ADDED:
 		case E_RCV_IPA_DONGLE_REMOVED:
 		case E_RCV_IPA_APPLICATION_PENDING:
-		case E_RCV_IPR_STATION_ADDED:
-		case E_RCV_IPR_STATION_REMOVED:
 			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode));
+			break;
+#pragma endregion E_RCV_IPA_APPLICATION_PENDING
+#pragma region E_RCV_IPR_STATION_ADDED
+		case E_RCV_IPR_STATION_ADDED:
+			{
+				StationInfoEx StationInfoEx;
+				SsmIPRGetStationInfoEx(nIPABoardId, pEvent->dwXtraInfo & 0xffff, &StationInfoEx);
+				LOG4CPLUS_INFO(log,"SanHui nEventCode:" << GetShEventName(nEventCode) << " StationId:" << StationInfoEx.nStationId 
+					<< " Call Ctrl Protocal: " << StationInfoEx.ucCallCtrlPtl
+					<< " IP: "<< StationInfoEx.CallCtrlAddr.S_un_b.s_b1 << "." 
+					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b2 << "."
+					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b3 << "."
+					<< StationInfoEx.CallCtrlAddr.S_un_b.s_b4
+					<< ":" << StationInfoEx.CallCtrlAddr.usPort
+					<< " MAC: " << std::hex <<StationInfoEx.ucMacAddr[0] << "-"
+					<< StationInfoEx.ucMacAddr[1] << "-"
+					<< StationInfoEx.ucMacAddr[2] << "-" 
+					<< StationInfoEx.ucMacAddr[3] << "-"
+					<< StationInfoEx.ucMacAddr[4] << "-"
+					<< StationInfoEx.ucMacAddr[5]);
+				}
+			break;
+		case E_RCV_IPR_STATION_REMOVED:
+			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << "protocol:" 
+				<<  (pEvent->dwXtraInfo >> 16) << "StationId:" << (pEvent->dwXtraInfo & 0xffff));
 			break;
 #pragma endregion E_RCV_IPR_STATION_REMOVED
 #pragma region E_RCV_IPR_AUTH_OVERFLOW
