@@ -115,7 +115,6 @@ typedef struct tagCH_STRUCT
 	CString		szIPP;			//		IP address of primary
 	CString		szIPS;			//		IP address of slavery
 	int			nRecSlaverId;				//		Destination Slaver
-	DWORD		dwActiveTime;				//		the time enter active
 	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
 	pIPR_SessionInfo pSessionInfo;
 	
