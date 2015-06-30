@@ -1702,13 +1702,13 @@ void CRecorderDlg::GetCaller(unsigned long nIndex){
 	static log4cplus::Logger log = log4cplus::Logger::getInstance(_T("Recorder"));
 	if (ChMap[nIndex].nChType == CH_TYPE_E1_RECORD)
 	{
-		if(SpyGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)//Get calling party number
+		if(SpyGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(50)) == -1)//Get calling party number
 			LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCallerId"));
 		ChMap[nIndex].szCallerId.ReleaseBuffer();
 	}
 	else if (ChMap[nIndex].nChType == CH_TYPE_ANALOG_RECORD)
 	{
-		if(SsmGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(20)) == -1)
+		if(SsmGetCallerId(nIndex, ChMap[nIndex].szCallerId.GetBuffer(50)) == -1)
 		{
 			LOG4CPLUS_ERROR(log, "Ch:" << nIndex << " failed to call function SsmGetCallerId()");
 		}
@@ -1718,7 +1718,7 @@ void CRecorderDlg::GetCallee(unsigned long nIndex){
 	static log4cplus::Logger log = log4cplus::Logger::getInstance(_T("Recorder"));
 	if (ChMap[nIndex].nChType == CH_TYPE_E1_RECORD)
 	{	
-		if(SpyGetCalleeId(nIndex, ChMap[nIndex].szCalleeId.GetBuffer(20)) == -1)//Get called party number
+		if(SpyGetCalleeId(nIndex, ChMap[nIndex].szCalleeId.GetBuffer(50)) == -1)//Get called party number
 		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyGetCalleeId"));
 		ChMap[nIndex].szCalleeId.ReleaseBuffer();
 	}
