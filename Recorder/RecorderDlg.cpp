@@ -698,6 +698,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 					pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 					LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
+						<<",StationId:" << nStationId
 						<<",CallSource:" << pCallInfo->CallSource
 						<<",Cause:" << pCallInfo->Cause
 						<<",CallerId:" << pCallInfo->szCallerId
@@ -764,6 +765,12 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 										ChMap[i].dwActiveTime = GetTickCount();
 										if(nStationId == 0xffff)	//sip trunk
 											ChMap[i].nCallRef = nCallRef;
+
+										LOG4CPLUS_DEBUG(log,"Ch:" << i << ",CallerId:" << ChMap[i].szCallerId
+											<<",CalleeId:" << ChMap[i].szCalleeId
+											<<",StationId:" << ChMap[i].nStationId
+											<<",CallRef:" << ChMap[i].nCallRef
+											<< ",dwActiveTime:" << ChMap[i].dwActiveTime);
 									}
 									break;
 								}
@@ -785,6 +792,11 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					{
 						ChMap[i].szCallerId = (char *)pSCCPInfo->CallingParty;
 						ChMap[i].szCalleeId = (char *)pSCCPInfo->CalledParty;
+						LOG4CPLUS_DEBUG(log,"Ch:" << i << ",CallerId:" << ChMap[i].szCallerId
+							<<",CalleeId:" << ChMap[i].szCalleeId
+							<<",StationId:" << ChMap[i].nStationId
+							<<",CallRef:" << ChMap[i].nCallRef
+							<< ",dwActiveTime:" << ChMap[i].dwActiveTime);
 						This->UpdateCircuitListCtrl(nCh);
 						break;
 					}
@@ -794,6 +806,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			{
 				PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 				LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
+					<<",StationId:" << nStationId
 					<<",CallSource:" << pCallInfo->CallSource
 					<<",Cause:" << pCallInfo->Cause
 					<<",CallerId:" << pCallInfo->szCallerId
@@ -868,6 +881,10 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 									ChMap[i].szCalleeId = pCallInfo->szCalledId;
 									ChMap[i].nStationId = nStationId;
 									ChMap[i].nSCCPActiveCallref[0] = nCallRef;
+									LOG4CPLUS_DEBUG(log,"Ch:" << i << ",CallerId:" << ChMap[i].szCallerId
+										<<",CalleeId:" << ChMap[i].szCalleeId
+										<<",StationId:" << ChMap[i].nStationId
+										<<",CallRef:" << ChMap[i].nCallRef);
 								}
 								break;
 							}
@@ -1032,6 +1049,15 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			{
 				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
+				int nPtlType = pEvent->dwXtraInfo >> 16;
+				int nStationId = pEvent->dwXtraInfo & 0xffff;
+				LOG4CPLUS_DEBUG(log,  "CallRef:" << pSessionInfo->nCallRef
+					<< ",StationId:" << nStationId 
+					<< ",SessionId:" << pSessionInfo->dwSessionId
+					<< ",PrimaryIP:" << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->PrimaryAddr.usPort
+					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
+					<< ",SecondaryIP:" << pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
+					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
 				ScanSlaver();
 				if(nSlaverCount > 0)
 				{
@@ -1092,7 +1118,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma endregion E_RCV_IPR_MEDIA_SESSION_STARTED
 #pragma region E_RCV_IPR_MEDIA_SESSION_STOPED
 		case E_RCV_IPR_MEDIA_SESSION_STOPED:
-		case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:
+		//case E_RCV_IPR_AUX_MEDIA_SESSION_STOPED:
 			{
 				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 
@@ -1100,6 +1126,13 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				int nPtlType = pEvent->dwXtraInfo >> 16;
 				int nStationId = pEvent->dwXtraInfo & 0xffff;
 
+				LOG4CPLUS_DEBUG(log,  "CallRef:" << pSessionInfo->nCallRef
+					<< ",StationId:" << nStationId 
+					<< ",SessionId:" << pSessionInfo->dwSessionId
+					<< ",PrimaryIP:" << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->PrimaryAddr.usPort
+					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
+					<< ",SecondaryIP:" << pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
+					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
 				ChMap[pEvent->nReference].dwSessionId = 0;
 
 				BOOL bFind = FALSE;
@@ -1270,7 +1303,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		default:
 		{
 			INT32 nCh= pEvent->nReference;
-			LOG4CPLUS_WARN(log, "Ch:" << nCh << " unresolve Event:" << GetShEventName(nEventCode));
+			LOG4CPLUS_WARN(log, "Ch:" << nCh << " Do nothing Event:" << GetShEventName(nEventCode));
 		}
 		break;
 	}
@@ -1616,11 +1649,18 @@ bool CRecorderDlg::StopRecording(unsigned long nCh)
 bool CRecorderDlg::StartRecording(unsigned long nCh){
 	SYSTEMTIME st;
 	GetLocalTime(&st);
+	CString _CallerId = ChMap[nCh].szCallerId;
+	CString _CalleeId = ChMap[nCh].szCalleeId;
+	_CallerId.Replace(':','_');
+	_CallerId.Replace('@','A');
+	_CalleeId.Replace(':','_');
+	_CalleeId.Replace('@','A');
+
 	ChMap[nCh].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
 		st.wYear, st.wMonth, st.wDay,
 		st.wYear, st.wMonth, st.wDay, 
 		st.wHour, st.wMinute, st.wSecond,
-		ChMap[nCh].szCallerId, ChMap[nCh].szCalleeId);
+		_CallerId, _CalleeId);
 
 	TCHAR szFile[MAX_PATH];
 	CString szDir = ChMap[nCh].szFileName;
