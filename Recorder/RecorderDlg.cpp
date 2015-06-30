@@ -1017,6 +1017,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				int nSlaverId = pEvent->dwParam >> 16;
 				int nResult = pEvent->dwParam & 0xffff;
 				LOG4CPLUS_INFO(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << ", SlaverId:" << nSlaverId << ", result:" << GetSalverResultMsg(nResult));
+				ScanSlaver();
 			}
 			break;
 #pragma endregion E_IPR_CLOSE_SLAVER_CB
