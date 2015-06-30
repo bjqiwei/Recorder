@@ -1141,7 +1141,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
 					ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
 					ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
-					LOG4CPLUS_INFO(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
+					LOG4CPLUS_INFO(log, "Ch:" << i << ",SessionId:" << pSessionInfo->dwSessionId 
 						<< ",CallRef:" << pSessionInfo->nCallRef
 						<< ",StationId:" << nStationId<< " Start record");
 				}
@@ -1235,7 +1235,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 				if(pEvent->dwParam & 0xffff)	//error occurred
 				{
-					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",error code:"<< (int)(pEvent->dwParam & 0xffff) << ",SessionId:" << pEvent->dwSubReason);
+					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pEvent->dwSubReason << ",error code:"<< (int)(pEvent->dwParam & 0xffff) );
 					ClearChVariable(pEvent->nReference);
 					break;
 				}
@@ -1265,6 +1265,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_INFO(log,"Ch:" << i << " SendSession to " << ChMap[pEvent->nReference].szIPP.GetBuffer() << ":" << ChMap[pEvent->nReference].nFowardingPPort
 						<<"; " << ChMap[pEvent->nReference].szIPS.GetBuffer() <<":"<<  ChMap[pEvent->nReference].nFowardingSPort);
 				}
+				ScanSlaver();
 			}
 			break;
 #pragma endregion E_IPR_ACTIVE_AND_REC_CB
@@ -1765,7 +1766,7 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 		if(SsmIPRActiveAndRecToFile(nCh, ChMap[nCh].nRecSlaverId, ChMap[nCh].pSessionInfo->dwSessionId,
 			ChMap[nCh].pSessionInfo->nPrimaryCodec, &ChMap[nCh].pSessionInfo->nFowardingPPort,
 			&ChMap[nCh].pSessionInfo->nFowardingSPort, 
-			szFile, -1, 0, -1, -1, 0) != 0)
+			szFile, A_LAW, 0, -1, -1, 0) != 0)
 		{
 			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 			return false;
@@ -1837,6 +1838,7 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 	ChMap[nCh].szIPP.Empty();
 	ChMap[nCh].szIPS.Empty();
 	ChMap[nCh].nRecSlaverId = -1;
+	ChMap[nCh].nCallRef = -1;
 }
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	switch(nEvent){
