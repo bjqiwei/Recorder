@@ -310,13 +310,6 @@ BOOL CRecorderDlg::InitCtiBoard()
 				LOG4CPLUS_INFO(log, "Ingore line voltage.");
 			}
 		}
-		else if (ChMap[i].nChType == CH_TYPE_E1_RECORD)
-		{
-			if((ChMap[i].nCallInCh = SpyGetCallInCh(i)) == -1)	//Get the number of incoming channel
-				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallInCh"));
-			if((ChMap[i].nCallOutCh = SpyGetCallOutCh(i)) == -1)//Get the number of outgoing channel
-				LOG4CPLUS_ERROR(log, "Ch:" << i <<  _T(" Fail to call SpyGetCallOutCh"));
-		}
 		else if (ChMap[i].nChType == CH_TYPE_IPR)
 		{
 			nIPRChNum++;
@@ -450,12 +443,6 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						if(ChMap[nCic].nState == CH_IDLE){
 							SetChannelState(nCic, CH_RCV_PHONUM);
 						}			
-						if(nCic != -1)
-						{
-							char cNewDtmf = (char)(0xFFFF & pEvent->dwParam);	//Newly received DTMF
-							LOG4CPLUS_INFO(log, "Ch:" << nCic << " newDTMF:" << cNewDtmf);
-							ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
-						}
 					}
 					break;	
 #pragma endregion DTMF
@@ -1636,6 +1623,11 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 		}
 		else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
 		{
+			if((ChMap[nCh].nCallInCh = SpyGetCallInCh(nCh)) == -1)	//Get the number of incoming channel
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  GetSsmLastErrMsg());
+			if((ChMap[nCh].nCallOutCh = SpyGetCallOutCh(nCh)) == -1)//Get the number of outgoing channel
+				LOG4CPLUS_ERROR(log, "Ch:" << nCh <<  GetSsmLastErrMsg());
+		
 			if(ChMap[nCh].wRecDirection == CALL_IN_RECORD)
 			{
 				if(SsmRecToFile(ChMap[nCh].nCallInCh,szFile, -1, 0L, -1, -1, 0) == -1){
