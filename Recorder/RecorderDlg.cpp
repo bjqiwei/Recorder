@@ -535,13 +535,13 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		//recording end event
 		case E_PROC_RecordEnd:
 		{
-			int nCh		= pEvent->nReference;	//number of channel output the event 
-			LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));			
-			if(ChMap[nCh].nState == CH_RECORDING)
-			{
-				SetChannelState(nCh, CH_PICKUP);					
-			}
-			This->UpdateCircuitListCtrl(nCh);
+			//int nCh		= pEvent->nReference;	//number of channel output the event 
+			//LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));			
+			//if(ChMap[nCh].nState == CH_RECORDING)
+			//{
+			//	SetChannelState(nCh, CH_PICKUP);					
+			//}
+			//This->UpdateCircuitListCtrl(nCh);
 		}
 		break;
 #pragma endregion E_PROC_RecordEnd
@@ -941,7 +941,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				int iprCh = 0;
 				for(iprCh=0; iprCh<nMaxCh; iprCh++)
 				{
-					if(ChMap[iprCh].dwSessionId && ChMap[iprCh].dwSessionId == ChMap[nCh].dwSessionId && ChMap[iprCh].nChType == CH_TYPE_IPA)
+					if(ChMap[iprCh].dwSessionId && ChMap[iprCh].dwSessionId == ChMap[nCh].dwSessionId && ChMap[iprCh].nChType == CH_TYPE_IPR)
 					{
 						bFind = TRUE;
 						break;
@@ -949,6 +949,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				} 
 				if(bFind)
 				{
+					LOG4CPLUS_DEBUG(log, "Ch:" << iprCh << ",stop recording.");
 					This->StopRecording(iprCh);
 					SetChannelState(iprCh, CH_IDLE);
 					ClearChVariable(iprCh);
@@ -1005,6 +1006,8 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						<<"; " << ChMap[nCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
 				}
 				ScanSlaver();
+				SetChannelState(nCh,CH_RECORDING);
+				This->UpdateCircuitListCtrl(nCh);
 			}
 			break;
 #pragma endregion E_IPR_ACTIVE_AND_REC_CB
@@ -1529,8 +1532,10 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 
 void CRecorderDlg::SetChannelState(unsigned long nIndex, CH_STATE newState)
 {
+	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
 	ChMap[nIndex].nState = newState;
 	ChMap[nIndex].szState = StateName[newState];
+	LOG4CPLUS_TRACE(log,"Ch:" << nIndex << ",New State:" << ChMap[nIndex].szState);
 }
 
 void CRecorderDlg::GetCaller(unsigned long nIndex){
