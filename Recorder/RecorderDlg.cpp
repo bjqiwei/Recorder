@@ -345,8 +345,10 @@ void CRecorderDlg::InitCircuitListCtrl()
 	m_ChList.SetExtendedStyle(dwExtendedStyle);
 
 	m_ImageList.Create(16,16,ILC_COLOR16,1,1);
-	m_ImageList.Add(m_hIconOnhook);
-	m_ImageList.Add(m_hIconOffhook);
+	int iIcon = m_ImageList.Add(m_hIconOnhook);
+	LOG4CPLUS_DEBUG(log,"m_hIconOnhook index:" << iIcon);
+	iIcon = m_ImageList.Add(m_hIconOffhook);
+	LOG4CPLUS_DEBUG(log,"m_hIconOffhook index:" << iIcon);
 	m_ChList.SetImageList(&m_ImageList,LVSIL_SMALL);
 
 	LV_COLUMN lvc;
@@ -730,12 +732,15 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							else if(ChMap[nCh].nStationId == nStationId)
 							{
 								bFind = TRUE;
-								if(ChMap[nCh].nState == CH_RECORDING)
+								if(pEvent->dwParam == DE_CALL_RELEASED || pEvent->dwParam == DE_CALL_SUSPENDED || pEvent->dwParam == DE_CALL_REJECTED || pEvent->dwParam == DE_CALL_ABANDONED)
 								{
-									LOG4CPLUS_INFO(log, "Ch:" << nCh << ", stop recording.");
-									This->StopRecording(nCh);
-									ClearChVariable(nCh);
-									ChMap[nCh].nCallRef = -1;
+									if(ChMap[nCh].nState == CH_RECORDING)
+									{
+										LOG4CPLUS_INFO(log, "Ch:" << nCh << ", stop recording.");
+										This->StopRecording(nCh);
+										ClearChVariable(nCh);
+										ChMap[nCh].nCallRef = -1;
+									}
 								}
 								This->UpdateCircuitListCtrl(nCh);
 							}
@@ -748,7 +753,8 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						{
 							if(ChMap[nCh].nChType ==  CH_TYPE_IPR
 								&& ChMap[nCh].nStationId == -1 && ChMap[nCh].nCallRef == -1 
-								&& ChMap[nCh].nState == CH_IDLE)
+								&& ChMap[nCh].nState == CH_IDLE
+								&& SsmGetChState(nCh) == S_CALL_STANDBY)
 							{
 								bFind = TRUE;
 								LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
@@ -886,6 +892,13 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			}
 			break;
 #pragma endregion PTL_CISCO_SKINNY
+#pragma region DE_MSG_CHG
+			case DE_MSG_CHG:
+				{
+					LOG4CPLUS_DEBUG(log, "StationId:" << nStationId << "," << (const char *)pEvent->pvBuffer);
+				}
+				break;
+#pragma endregion DE_MSG_CHG
 #pragma region DEFAULT
 		default:
 			if(pEvent->dwParam == DE_OFFHOOK 
@@ -996,21 +1009,22 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma region E_RCV_IPR_STATION_ADDED
 		case E_RCV_IPR_STATION_ADDED:
 			{
-				StationInfoEx StationInfoEx;
-				SsmIPRGetStationInfoEx(nIPABoardId, pEvent->dwXtraInfo & 0xffff, &StationInfoEx);
-				LOG4CPLUS_INFO(log,"SanHui nEventCode:" << GetShEventName(nEventCode) << " StationId:" << StationInfoEx.nStationId 
-					<< " Call Ctrl Protocal: " << (int)StationInfoEx.ucCallCtrlPtl
-					<< " IP: "<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b1 << "." 
-					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b2 << "."
-					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b3 << "."
-					<< (int)StationInfoEx.CallCtrlAddr.S_un_b.s_b4
-					<< ":" << StationInfoEx.CallCtrlAddr.usPort
-					<< " MAC: " << std::hex <<(int)StationInfoEx.ucMacAddr[0] << "-"
-					<< (int)StationInfoEx.ucMacAddr[1] << "-"
-					<< (int)StationInfoEx.ucMacAddr[2] << "-" 
-					<< (int)StationInfoEx.ucMacAddr[3] << "-"
-					<< (int)StationInfoEx.ucMacAddr[4] << "-"
-					<< (int)StationInfoEx.ucMacAddr[5]);
+				StationInfoEx SInfoEx;
+				int nStationId = pEvent->dwXtraInfo & 0xffff;
+				SsmIPRGetStationInfoEx(nIPABoardId, nStationId, &SInfoEx);
+				LOG4CPLUS_INFO(log,"SanHui nEventCode:" << GetShEventName(nEventCode) << " StationId:" << SInfoEx.nStationId 
+					<< " Call Ctrl Protocal: " << (int)SInfoEx.ucCallCtrlPtl
+					<< " IP: "<< (int)SInfoEx.CallCtrlAddr.S_un_b.s_b1 << "." 
+					<< (int)SInfoEx.CallCtrlAddr.S_un_b.s_b2 << "."
+					<< (int)SInfoEx.CallCtrlAddr.S_un_b.s_b3 << "."
+					<< (int)SInfoEx.CallCtrlAddr.S_un_b.s_b4
+					<< ":" << SInfoEx.CallCtrlAddr.usPort
+					<< " MAC: " << std::hex <<(int)SInfoEx.ucMacAddr[0] << "-"
+					<< (int)SInfoEx.ucMacAddr[1] << "-"
+					<< (int)SInfoEx.ucMacAddr[2] << "-" 
+					<< (int)SInfoEx.ucMacAddr[3] << "-"
+					<< (int)SInfoEx.ucMacAddr[4] << "-"
+					<< (int)SInfoEx.ucMacAddr[5]);
 				}
 			break;
 		case E_RCV_IPR_STATION_REMOVED:
