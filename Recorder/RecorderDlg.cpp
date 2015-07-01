@@ -985,24 +985,24 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_INFO(log,"Ch:" << nCh << " find binding IPA channel:" << ipaCh);
 				}
 
-				IPR_Addr ipAddr = IPR_SlaverAddr[ChMap[ipaCh].nRecSlaverId].ipAddr;
-				ChMap[ipaCh].szIPP_Rec.Format("%d.%d.%d.%d", ipAddr.S_un_b.s_b1, 
+				IPR_Addr ipAddr = IPR_SlaverAddr[ChMap[nCh].nRecSlaverId].ipAddr;
+				ChMap[nCh].szIPP_Rec.Format("%d.%d.%d.%d", ipAddr.S_un_b.s_b1, 
 					ipAddr.S_un_b.s_b2, 
 					ipAddr.S_un_b.s_b3, 
 					ipAddr.S_un_b.s_b4);
-				ChMap[ipaCh].szIPS_Rec.Format("%d.%d.%d.%d",ipAddr.S_un_b.s_b1, 
+				ChMap[nCh].szIPS_Rec.Format("%d.%d.%d.%d",ipAddr.S_un_b.s_b1, 
 					ipAddr.S_un_b.s_b2, 
 					ipAddr.S_un_b.s_b3, 
 					ipAddr.S_un_b.s_b4);
 
-				if(SsmIPRSendSession(ipaCh, ChMap[ipaCh].szIPP_Rec.GetBuffer(), ChMap[ipaCh].SessionInfo.nFowardingPPort, 
-					ChMap[ipaCh].szIPS_Rec.GetBuffer(), ChMap[ipaCh].SessionInfo.nFowardingSPort) != 0)
+				if(SsmIPRSendSession(ipaCh, ChMap[nCh].szIPP_Rec.GetBuffer(), ChMap[nCh].SessionInfo.nFowardingPPort, 
+					ChMap[nCh].szIPS_Rec.GetBuffer(), ChMap[nCh].SessionInfo.nFowardingSPort) != 0)
 				{
 					LOG4CPLUS_ERROR(log, "Ch:" << ipaCh << ","<< GetSsmLastErrMsg());
 				}
 				else{
-					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[ipaCh].szIPS_Rec.GetBuffer() << ":" << ChMap[ipaCh].SessionInfo.nFowardingPPort
-						<<"; " << ChMap[ipaCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[ipaCh].SessionInfo.nFowardingSPort);
+					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[nCh].szIPS_Rec.GetBuffer() << ":" << ChMap[nCh].SessionInfo.nFowardingPPort
+						<<"; " << ChMap[nCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
 				}
 				ScanSlaver();
 			}
@@ -1509,6 +1509,11 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 		{
 			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
 			return false;
+		}
+		else{
+			LOG4CPLUS_INFO(log,"Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].SessionInfo.dwSessionId
+				<< " nFowardingPPort:" << ChMap[nCh].SessionInfo.nFowardingPPort
+				<<"; nFowardingSPort:"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
 		}
 	}
 #pragma endregion IPR
