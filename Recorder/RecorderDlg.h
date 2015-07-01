@@ -87,7 +87,7 @@ enum
 	RECORDING_BASE_DEVENT,
 };
 
-typedef struct tagCH_STRUCT
+typedef struct tagCH_INFO
 {
 	CH_STATE  nState;				//State of monitored channel
 	CString szState;
@@ -110,15 +110,15 @@ typedef struct tagCH_STRUCT
 	DWORD		dwSessionId;				//		Session ID
 	int			nPtlType;					//		Protocol type
 	int			nStationId;					//		Station ID
-	int			nFowardingPPort;			//		Primary forwarding port
-	int			nFowardingSPort;			//		Secondary forwarding port
 	CString		szIPP;			//		IP address of primary
 	CString		szIPS;			//		IP address of slavery
+	CString		szIPP_Rec;
+	CString		szIPS_Rec;
 	int			nRecSlaverId;				//		Destination Slaver
 	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
-	pIPR_SessionInfo pSessionInfo;
+	IPR_SessionInfo SessionInfo;
 	
-}CH_STRUCT;
+}CH_INFO;
 
 class CRecorderDlg : public CDialogEx
 {
@@ -150,7 +150,7 @@ public:
 	//int		m_nRecFormat;
 	int		m_nCallFnMode;
 	static int CALLBACK EventCallback(PSSM_EVENT pEvent);
-	static CH_STRUCT ChMap[MAX_CH];	//Monitored circuits
+	static CH_INFO ChMap[MAX_CH];	//Monitored circuits
 	static int nMaxCh;					//Maximum number of the monitored channel
 	static int   nIPRBoardId;
 	static int   nIPABoardId;

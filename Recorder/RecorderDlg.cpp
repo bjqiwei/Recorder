@@ -11,6 +11,8 @@
 #include <math.h>
 #include "oledb2.h"
 #include <iosfwd>
+#include <map>
+#include <memory>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -47,12 +49,14 @@ static LPTSTR	StateName[] = {"空闲", "活动", "收号","振铃","通话","录音","摘机",
 
 
 int CRecorderDlg::nMaxCh = 0;
-CH_STRUCT CRecorderDlg::ChMap[MAX_CH];
+CH_INFO CRecorderDlg::ChMap[MAX_CH];
 int CRecorderDlg::nIPRBoardId = -1;
 int CRecorderDlg::nIPABoardId = -1;
 int CRecorderDlg::nSlaverCount = 0;
 int CRecorderDlg::nIPRChNum = 0;
 IPR_SLAVERADDR CRecorderDlg::IPR_SlaverAddr[MAX_SLAVER_COUNT];
+typedef std::map<ULONG,std::shared_ptr<IPR_CALL_INFO>> MAP_IPR_CALL_INFO;
+static MAP_IPR_CALL_INFO g_IPR_CALL_INFO;
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CRecorderDlg::IDD, pParent),m_freeCapacity(0),m_totalCapacity(1)
@@ -319,8 +323,6 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].nPtlType = -1;
 		ChMap[i].nStationId = -1;
 		ChMap[i].nRecSlaverId = -1;
-		ChMap[i].nFowardingPPort = -1;
-		ChMap[i].nFowardingSPort = -1;
 		for(int j=0; j < MAX_ACTIVE_LINE_NUM; j++)
 		{
 			ChMap[i].nSCCPActiveCallref[j] = 0;
@@ -692,204 +694,48 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			{
 #pragma region PTL_SIP
 			case PTL_SIP:
+			case PTL_CISCO_SKINNY:
 				if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_REJECTED)
 				{
 					//LOG4CPLUS_DEBUG(log, "PTL_SIP");
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
-					pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
-					LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
-						<<",StationId:" << nStationId
-						<<",CallSource:" << pCallInfo->CallSource
-						<<",Cause:" << pCallInfo->Cause
-						<<",CallerId:" << pCallInfo->szCallerId
-						<< ",CalledId:" << pCallInfo->szCalledId
-						<< ",ReferredBy:" << pCallInfo->szReferredBy
-						<<", ReferTo:" << pCallInfo->szReferTo);
 					
-					BOOL bFind = FALSE;
-					for(int nCh =0; nCh<nMaxCh; nCh++)
-					{
-						if(ChMap[nCh].nChType == CH_TYPE_IPR)
-						{
-							if(nStationId == 0xffff )	//sip trunk
-							{
-								if (ChMap[nCh].nCallRef == pCallInfo->CallRef)
-								{
-									bFind = TRUE;
-									if(pEvent->dwParam == DE_CALL_RELEASED || pEvent->dwParam == DE_CALL_SUSPENDED || pEvent->dwParam == DE_CALL_REJECTED || pEvent->dwParam == DE_CALL_ABANDONED)
-									{
-										if(ChMap[nCh].nState == CH_RECORDING)
-										{
-											LOG4CPLUS_INFO(log, "Ch:" << nCh << ", stop recording.");
-											This->StopRecording(nCh);
-											ClearChVariable(nCh);
-											ChMap[nCh].nCallRef = -1;
-										}
-										This->UpdateCircuitListCtrl(nCh);
-									}	
-								}					
-							}
-							else if(ChMap[nCh].nStationId == nStationId)
-							{
-								bFind = TRUE;
-								if(pEvent->dwParam == DE_CALL_RELEASED || pEvent->dwParam == DE_CALL_SUSPENDED || pEvent->dwParam == DE_CALL_REJECTED || pEvent->dwParam == DE_CALL_ABANDONED)
-								{
-									if(ChMap[nCh].nState == CH_RECORDING)
-									{
-										LOG4CPLUS_INFO(log, "Ch:" << nCh << ", stop recording.");
-										This->StopRecording(nCh);
-										ClearChVariable(nCh);
-										ChMap[nCh].nCallRef = -1;
-									}
-								}
-								This->UpdateCircuitListCtrl(nCh);
-							}
-						}
+					int key = nStationId;
+					if (nStationId == 0xffff){
+						key = pCallInfo->CallRef;
 					}
-					
-					if(!bFind)
+					if(pEvent->dwParam == DE_CALL_RELEASED 
+						|| pEvent->dwParam == DE_CALL_SUSPENDED 
+						|| pEvent->dwParam == DE_CALL_REJECTED 
+						|| pEvent->dwParam == DE_CALL_ABANDONED)
 					{
-						for(int nCh =0; nCh<nMaxCh; nCh++)
+						MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
+						if (it != g_IPR_CALL_INFO.end());
 						{
-							if(ChMap[nCh].nChType ==  CH_TYPE_IPR
-								&& ChMap[nCh].nStationId == -1 && ChMap[nCh].nCallRef == -1 
-								&& ChMap[nCh].nState == CH_IDLE
-								&& SsmGetChState(nCh) == S_CALL_STANDBY)
-							{
-								bFind = TRUE;
-								LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
-									<<",StationId:" << nStationId << ", find a new IPR:" << nCh);
-								if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_CONNECTED)
-								{
-									ChMap[nCh].szCallerId = pCallInfo->szCallerId;
-									ChMap[nCh].szCalleeId = pCallInfo->szCalledId;
-									ChMap[nCh].nStationId = nStationId;
-									if(nStationId == 0xffff)	//sip trunk
-										ChMap[nCh].nCallRef = pCallInfo->CallRef;
+							g_IPR_CALL_INFO.erase(it);
+						}
+						LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
+					}
+					else if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_CONNECTED)
+					{
+						MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
+						if (it == g_IPR_CALL_INFO.end());
+						{
+							PIPR_CALL_INFO pCInfo = new IPR_CALL_INFO(*pCallInfo);
 
-									LOG4CPLUS_DEBUG(log,"Ch:" << nCh <<",StationId:" << ChMap[nCh].nStationId
-										<<",CallRef:" << ChMap[nCh].nCallRef
-										<< ",CallerId:" << ChMap[nCh].szCallerId
-										<<",CalleeId:" << ChMap[nCh].szCalleeId);
-								}
-								break;
-							}
+							g_IPR_CALL_INFO.insert(MAP_IPR_CALL_INFO::value_type(key,pCInfo));
+							LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
+								<<",StationId:" << nStationId
+								<<",CallSource:" << pCallInfo->CallSource
+								<<",Cause:" << pCallInfo->Cause
+								<<",CallerId:" << pCallInfo->szCallerId
+								<< ",CalledId:" << pCallInfo->szCalledId
+								<< ",ReferredBy:" << pCallInfo->szReferredBy
+								<<", ReferTo:" << pCallInfo->szReferTo);
 						}
+						LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
 					}
-				}
-				break;
-#pragma endregion PTL_SIP
-#pragma region PTL_CISCO_SKINNY
-		case PTL_CISCO_SKINNY:
-			if(pEvent->dwParam == DE_CISCO_SCCP_CALL_INFO)	//for cisco skinny get callerid and calledid
-			{
-				//LOG4CPLUS_DEBUG(log, "PTL_CISCO_SKINNY");
-				PIPR_CISCO_SCCP_CALL_INFO pSCCPInfo = (PIPR_CISCO_SCCP_CALL_INFO)pEvent->pvBuffer;
-				for(int nCh=0; nCh<nMaxCh; nCh++)
-				{
-					if(ChMap[nCh].nPtlType == nPtlType && ChMap[nCh].nStationId == nStationId)
-					{
-						ChMap[nCh].szCallerId = (char *)pSCCPInfo->CallingParty;
-						ChMap[nCh].szCalleeId = (char *)pSCCPInfo->CalledParty;
-						LOG4CPLUS_DEBUG(log,"Ch:" << nCh << ",CallerId:" << ChMap[nCh].szCallerId
-							<<",CalleeId:" << ChMap[nCh].szCalleeId
-							<<",StationId:" << ChMap[nCh].nStationId
-							<<",CallRef:" << ChMap[nCh].nCallRef);
-						This->UpdateCircuitListCtrl(nCh);
-						break;
-					}
-				}
-			}
-			else if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_REJECTED)
-			{
-				PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
-				LOG4CPLUS_DEBUG(log, ",CallRef:" << pCallInfo->CallRef
-					<<",StationId:" << nStationId
-					<<",CallSource:" << pCallInfo->CallSource
-					<<",Cause:" << pCallInfo->Cause
-					<<",CallerId:" << pCallInfo->szCallerId
-					<< ",CalledId:" << pCallInfo->szCalledId
-					<< ",ReferredBy:" << pCallInfo->szReferredBy
-					<<", ReferTo:" << pCallInfo->szReferTo);
-				ULONG nCallRef = pCallInfo->CallRef;
-				BOOL bFind = FALSE;
-				for(int i=0; i<nMaxCh; i++)
-				{
-					if(ChMap[i].nChType == CH_TYPE_IPR && ChMap[i].nStationId == nStationId)
-					{
-						bFind = TRUE;
-						if(pEvent->dwParam == DE_CALL_RELEASED || pEvent->dwParam == DE_CALL_SUSPENDED || pEvent->dwParam == DE_CALL_REJECTED || pEvent->dwParam == DE_CALL_ABANDONED)
-						{
-							for(int j=0;j<MAX_ACTIVE_LINE_NUM;j++)
-							{
-								if(ChMap[i].nSCCPActiveCallref[j] == pCallInfo->CallRef)
-								{
-									ChMap[i].nSCCPActiveCallref[j] = 0;
-								}
-							}
-							
-							if(ChMap[i].nState == CH_RECORDING)
-							{
-								This->StopRecording(i);
-								ClearChVariable(i);
-							}
-						}
-						else
-						{
-							BOOL bOld = FALSE;
-							for(int j=0;j<MAX_ACTIVE_LINE_NUM;j++)
-							{
-								if(ChMap[i].nSCCPActiveCallref[j] == pCallInfo->CallRef)
-								{
-									bOld = TRUE;
-									break;
-								}
-							}
-							if(!bOld)
-							{
-								for(int j=0;j<MAX_ACTIVE_LINE_NUM;j++)
-								{
-									if(ChMap[i].nSCCPActiveCallref[j] == 0)
-									{
-										ChMap[i].nSCCPActiveCallref[j] = pCallInfo->CallRef;
-										break;
-									}
-								}
-							}
-						}
-						SetChannelState(i, CH_IDLE);
-						This->UpdateCircuitListCtrl(i);
-						break;
-					}
-				}
-
-				if(!bFind)
-				{
-					for(int i=0; i<nMaxCh; i++)
-					{
-						if(ChMap[i].nChType == CH_TYPE_IPR 
-							&& ChMap[i].nStationId == -1
-							&& ChMap[i].nCallRef == -1)
-						{
-							if(SsmGetChState(i) == S_CALL_STANDBY)
-							{
-								if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_CONNECTED)
-								{
-									ChMap[i].szCallerId = pCallInfo->szCallerId;
-									ChMap[i].szCalleeId = pCallInfo->szCalledId;
-									ChMap[i].nStationId = nStationId;
-									ChMap[i].nSCCPActiveCallref[0] = nCallRef;
-									LOG4CPLUS_DEBUG(log,"Ch:" << i << ",CallerId:" << ChMap[i].szCallerId
-										<<",CalleeId:" << ChMap[i].szCalleeId
-										<<",StationId:" << ChMap[i].nStationId
-										<<",CallRef:" << ChMap[i].nCallRef);
-								}
-								break;
-							}
-						}
-					}
-				}
-			}
+				}			
 			break;
 #pragma endregion PTL_CISCO_SKINNY
 #pragma region DE_MSG_CHG
@@ -906,90 +752,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				|| pEvent->dwParam == DE_RING_ON
 				|| pEvent->dwParam == DE_RING_OFF)	//control by dchannnel event example
 			{
-				//sLOG4CPLUS_DEBUG(log, "Other Control");
-				BOOL bFind = FALSE;
-				if(pEvent->dwParam == DE_OFFHOOK || pEvent->dwParam == DE_RING_ON)
-				{
-					for(int i=0; i<nMaxCh; i++)
-					{
-						if(ChMap[i].nChType == CH_TYPE_IPR 
-							&& ChMap[i].nStationId == nStationId)
-						{
-							if(pEvent->dwParam == DE_RING_ON)
-								SetChannelState(i,CH_RINGING);
-							else
-								SetChannelState(i, CH_PICKUP);
-							bFind = TRUE;
-							This->UpdateCircuitListCtrl(i);
-							break;
-						}
-					}
-				}
-				else if(pEvent->dwParam == DE_ONHOOK)
-				{
-					for(int i=0; i<nMaxCh; i++)
-					{
-						if(ChMap[i].nChType == CH_TYPE_IPR 
-							&& ChMap[i].nStationId == nStationId)
-						{
-							bFind = TRUE;
-							
-							if(ChMap[i].nState == CH_RECORDING)
-							{
-								This->StopRecording(i);
-							}
-							SetChannelState(i, CH_IDLE);
-							ClearChVariable(i);
-							This->UpdateCircuitListCtrl(i);
-							break;
-						}
-					}
-				}
-				else if(pEvent->dwParam == DE_RING_OFF)
-				{
-					for(int i=0; i<nMaxCh; i++)
-					{
-						if(ChMap[i].nChType == CH_TYPE_IPR 
-							&& ChMap[i].nStationId == nStationId
-							&& ChMap[i].nState == CH_RINGING)
-						{
-							bFind = TRUE;
-							
-							if(ChMap[i].nState != CH_RECORDING)
-							{
-								This->StopRecording(i);
-							}
-							SetChannelState(i, CH_IDLE);
-							ClearChVariable(i);
-							This->UpdateCircuitListCtrl(i);
-							break;
-						}
-					}
-				}
-
-				if(!bFind)
-				{
-					if(pEvent->dwParam == DE_OFFHOOK || pEvent->dwParam == DE_RING_ON)
-					{
-						for(int i=0; i<nMaxCh; i++)
-						{
-							if(ChMap[i].nChType == CH_TYPE_IPR 
-								&& ChMap[i].nStationId == -1
-								&& ChMap[i].dwSessionId == 0)
-							{
-								if(SsmGetChState(i) == S_CALL_STANDBY)
-								{
-									ChMap[i].nStationId = nStationId;
-									if(pEvent->dwParam == DE_RING_ON)
-										SetChannelState(i,CH_RINGING);
-									else
-										SetChannelState(i,CH_PICKUP);
-									break;
-								}
-							}
-						}
-					}
-				}
+				LOG4CPLUS_WARN(log, "unknown control,do nothing,:0x" << std::hex << pEvent->dwParam);			
 			}
 			break;
 #pragma endregion DEFAULT
@@ -1057,75 +820,74 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
 				int nPtlType = pEvent->dwXtraInfo >> 16;
 				int nStationId = pEvent->dwXtraInfo & 0xffff;
-				LOG4CPLUS_DEBUG(log,  "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId
-					<< ",CallRef:" << pSessionInfo->nCallRef
-					<< ",StationId:" << nStationId 
-					<< ",PrimaryIP:" << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->PrimaryAddr.usPort
+				int nCh = pEvent->nReference;
+				ChMap[nCh].dwSessionId = pSessionInfo->dwSessionId;
+				ChMap[nCh].nCallRef = pSessionInfo->nCallRef;
+				ChMap[nCh].nStationId = nStationId;
+				ChMap[nCh].nPtlType = nPtlType;
+
+				ChMap[nCh].szIPP.Format("%d.%d.%d.%d:%d", pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, 
+					pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4, pSessionInfo->PrimaryAddr.usPort);
+				ChMap[nCh].szIPS.Format("%d.%d.%d.%d:%d", pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, 
+					pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4, pSessionInfo->SecondaryAddr.usPort);
+
+				
+
+				LOG4CPLUS_DEBUG(log,  "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId
+					<< ",CallRef:" << ChMap[nCh].nCallRef
+					<< ",StationId:" << ChMap[nCh].nStationId 
+					<< ",PrimaryIP:" << ChMap[nCh].szIPP.GetBuffer()
 					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
-					<< ",SecondaryIP:" << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
+					<< ",SecondaryIP:" << ChMap[nCh].szIPS.GetBuffer()
 					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
-				ChMap[pEvent->nReference].dwSessionId = pSessionInfo->dwSessionId;
 				
 				if(nSlaverCount > 0)
 				{
 					BOOL bFind = FALSE;
-					int i = 0;
-					for(i=0; i<nMaxCh; i++)
+					int iprCh;
+					for(iprCh=0; iprCh<nMaxCh; iprCh++)
 					{
-						if(ChMap[i].nChType == CH_TYPE_IPR)
+						if(ChMap[iprCh].nChType == CH_TYPE_IPR 
+							&& ChMap[iprCh].nState == CH_IDLE)
 						{
-							if(nPtlType == PTL_SIP && nStationId == 0xffff)
-							{
-								if(ChMap[i].nCallRef == pSessionInfo->nCallRef)
-								{
-									ChMap[i].szIPP.Empty();
-									ChMap[i].szIPS.Empty();
-									bFind = TRUE;
-									break;
-								}
-							}
-							else if(ChMap[i].nStationId == nStationId)
-							{
-								ChMap[i].szIPP.Empty();
-								ChMap[i].szIPS.Empty();
-								bFind = TRUE;
-								break;
-							}
+							ChMap[iprCh].dwSessionId = ChMap[nCh].dwSessionId;
+							ChMap[iprCh].nStationId = ChMap[nCh].nCallRef;
+							ChMap[iprCh].nCallRef = ChMap[nCh].nStationId;
+							ChMap[iprCh].nPtlType = ChMap[nCh].nPtlType;
+							bFind = TRUE;
+							break;
 						}
 					}
-					if (!bFind)
-					{
-						for(i=0; i<nMaxCh; i++)
-						{
-							if(ChMap[i].nChType == CH_TYPE_IPR 
-								&& ChMap[i].nStationId == -1
-								&& ChMap[i].dwSessionId == 0)
-							{
-								if(SsmGetChState(i) == S_CALL_STANDBY)
-								{
-									ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
-									ChMap[i].nStationId = nStationId;
-									ChMap[i].nCallRef = pSessionInfo->nCallRef;
-									bFind = TRUE;
-									break;
-								}
-							}
-						}
-					}
-
+					
 					if(!bFind)
 					{
-						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
-							<< ",CallRef:" << pSessionInfo->nCallRef
-							<< ",StationId:" << nStationId << " not find idle IPR channel");
+						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+							<< ",CallRef:" <<  ChMap[nCh].nCallRef
+							<< ",StationId:" <<  ChMap[nCh].nStationId << " not find idle IPR channel");
 						break;
 					}
 
-					ChMap[i].szIPP.Format("%d.%d.%d.%d", pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, 
-						pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4);
-					ChMap[i].szIPS.Format("%d.%d.%d.%d", pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, 
-						pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4);
-				
+					int key = nStationId;
+					if (key == 0xffff){
+						key = ChMap[nCh].nCallRef;
+					}
+
+					MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
+
+					if(it == g_IPR_CALL_INFO.end())
+					{
+						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+							<< ",CallRef:" << ChMap[nCh].nCallRef
+							<< ",StationId:" << nStationId << " not find idle IPR channel");
+						break;
+					}
+					else{
+						ChMap[nCh].szCallerId = it->second->szCallerId;
+						ChMap[nCh].szCalleeId = it->second->szCallerId;
+						ChMap[iprCh].szCallerId = it->second->szCallerId;
+						ChMap[iprCh].szCalleeId = it->second->szCallerId;
+					}
+
 					int nSlaverIndex = -1;
 					for(int j=0; j<nSlaverCount; j++)
 					{
@@ -1136,29 +898,23 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						}
 					}
 					if(nSlaverIndex < 0){
-						LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pSessionInfo->dwSessionId 
-							<< ",CallRef:" << pSessionInfo->nCallRef
-							<< ",StationId:" << nStationId << "not find idle Slaver");
+						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+							<< ",CallRef:" << ChMap[nCh].nCallRef
+							<< ",StationId:" << ChMap[nCh].nStationId << "not find idle Slaver");
 						break;
 					}
 
-					ChMap[i].pSessionInfo = pSessionInfo;
-					ChMap[i].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
-					if(This->StartRecording(i)){
-						SetChannelState(i, CH_RECORDING);
+					ChMap[iprCh].SessionInfo = *pSessionInfo;
+					ChMap[iprCh].nRecSlaverId = nSlaverIndex;
+					if(This->StartRecording(iprCh)){
+						SetChannelState(iprCh, CH_ACTIVE);
 					}
-
-					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
-					ChMap[i].nFowardingPPort = pSessionInfo->nFowardingPPort;
-					ChMap[i].nFowardingSPort = pSessionInfo->nFowardingSPort;
-					ChMap[i].nCallRef = pSessionInfo->nCallRef;
-					ChMap[i].dwSessionId = pSessionInfo->dwSessionId;
-					ChMap[i].nPtlType = pEvent->dwXtraInfo >> 16;
-					ChMap[i].nStationId = pEvent->dwXtraInfo & 0xffff;
-					LOG4CPLUS_INFO(log, "Ch:" << i << ",SessionId:" << pSessionInfo->dwSessionId 
-						<< ",CallRef:" << pSessionInfo->nCallRef
-						<< ",StationId:" << nStationId<< " Start record");
+					LOG4CPLUS_INFO(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+						<< ",CallRef:" << ChMap[nCh].nCallRef
+						<< ",StationId:" << ChMap[nCh].nStationId<< " Start record");
+					This->UpdateCircuitListCtrl(iprCh);
 				}
+				This->UpdateCircuitListCtrl(nCh);
 			}
 			break;
 #pragma endregion E_RCV_IPR_MEDIA_SESSION_STARTED
@@ -1171,74 +927,32 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				pIPR_SessionInfo pSessionInfo = (pIPR_SessionInfo)pEvent->pvBuffer;
 				int nPtlType = pEvent->dwXtraInfo >> 16;
 				int nStationId = pEvent->dwXtraInfo & 0xffff;
-
-				LOG4CPLUS_DEBUG(log,  "CallRef:" << pSessionInfo->nCallRef
+				int nCh = pEvent->nReference;
+				LOG4CPLUS_DEBUG(log,  "Ch:" << nCh <<",CallRef:" << pSessionInfo->nCallRef
 					<< ",StationId:" << nStationId 
 					<< ",SessionId:" << pSessionInfo->dwSessionId
 					<< ",PrimaryIP:" << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b1 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->PrimaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->PrimaryAddr.usPort
 					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
-					<< ",SecondaryIP:" << pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << pSessionInfo->SecondaryAddr.usPort
+					<< ",SecondaryIP:" <<(int)pSessionInfo->SecondaryAddr.S_un_b.s_b1 << "." <<(int)pSessionInfo->SecondaryAddr.S_un_b.s_b2 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b3 << "." << (int)pSessionInfo->SecondaryAddr.S_un_b.s_b4 << ":" << (int)pSessionInfo->SecondaryAddr.usPort
 					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
-				ChMap[pEvent->nReference].dwSessionId = 0;
+				
 
 				BOOL bFind = FALSE;
-				int i = 0;
-				for(i=0; i<nMaxCh; i++)
+				int iprCh = 0;
+				for(iprCh=0; iprCh<nMaxCh; iprCh++)
 				{
-					if(nPtlType == PTL_SIP && nStationId == 0xffff)
+					if(ChMap[iprCh].dwSessionId && ChMap[iprCh].dwSessionId == ChMap[nCh].dwSessionId && ChMap[iprCh].nChType == CH_TYPE_IPA)
 					{
-						if(ChMap[i].nCallRef == pSessionInfo->nCallRef
-							&& ChMap[i].nChType == CH_TYPE_IPR)
-						{
-							ChMap[i].dwSessionId = 0;
-							bFind = TRUE;
-							break;
-						}
-					}
-					else if(ChMap[i].nStationId == nStationId
-						&& ChMap[i].nChType == CH_TYPE_IPR)
-					{
-						ChMap[i].dwSessionId = 0;
 						bFind = TRUE;
 						break;
 					}
 				} 
-
-				if(!bFind)
+				if(bFind)
 				{
-					for(i=0; i<nMaxCh; i++)
-					{
-						if(ChMap[i].nStationId == nStationId
-							&& ChMap[i].nChType == CH_TYPE_IPR
-							&& ChMap[i].dwSessionId == pSessionInfo->dwSessionId)
-						{
-							ChMap[i].dwSessionId = 0;
-							SetChannelState(i, CH_IDLE);
-							This->UpdateCircuitListCtrl(i);
-							bFind = TRUE;
-							break;
-						}
-					} 
-				}
-
-				if(!bFind)
-				{
-					break;
-				}
-
-				if(ChMap[i].nState == CH_RECORDING)
-				{
-					This->StopRecording(i);
-					SetChannelState(i, CH_IDLE);
-					ClearChVariable(i);
-					This->UpdateCircuitListCtrl(i);
-				}
-				else if(ChMap[i].nState == CH_ACTIVE)
-				{
-					SsmPauseRecToFile(i);
-					SetChannelState(i,CH_PAUSED);
-					This->UpdateCircuitListCtrl(i);
-
+					This->StopRecording(iprCh);
+					SetChannelState(iprCh, CH_IDLE);
+					ClearChVariable(iprCh);
+					This->UpdateCircuitListCtrl(iprCh);
 				}
 			}
 			break;
@@ -1246,38 +960,49 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma region E_IPR_ACTIVE_AND_REC_CB
 		case E_IPR_ACTIVE_AND_REC_CB:
 			{
-				LOG4CPLUS_DEBUG(log, "Ch:" << pEvent->nReference << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+				int nCh = pEvent->nReference;
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 				if(pEvent->dwParam & 0xffff)	//error occurred
 				{
 					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pEvent->dwSubReason << ",error code:"<< (int)(pEvent->dwParam & 0xffff) );
-					ClearChVariable(pEvent->nReference);
+					ClearChVariable(nCh);
 					break;
 				}
 				BOOL bFind = FALSE;
-				int i = 0;
-				for(i=0; i<nMaxCh; i++)
+				int ipaCh = 0;
+				for(ipaCh = 0; ipaCh < nMaxCh; ipaCh++)
 				{
-					if(ChMap[i].dwSessionId && ChMap[i].dwSessionId == ChMap[pEvent->nReference].dwSessionId && ChMap[i].nChType == CH_TYPE_IPA)
+					if(ChMap[ipaCh].dwSessionId && ChMap[ipaCh].dwSessionId == ChMap[nCh].dwSessionId && ChMap[ipaCh].nChType == CH_TYPE_IPA)
 					{
 						bFind = TRUE;
 						break;
 					}
 				}
 				if(!bFind){
-					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << "not find binding IPA channel");
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << "not find binding IPA channel");
 					break;
 				}else{
-					LOG4CPLUS_INFO(log,"Ch:" << pEvent->nReference << " find binding IPA channel:" << i);
+					LOG4CPLUS_INFO(log,"Ch:" << nCh << " find binding IPA channel:" << ipaCh);
 				}
 
-				if(SsmIPRSendSession(i, ChMap[pEvent->nReference].szIPP.GetBuffer(), ChMap[pEvent->nReference].nFowardingPPort, 
-					ChMap[pEvent->nReference].szIPS.GetBuffer(), ChMap[pEvent->nReference].nFowardingSPort) != 0)
+				IPR_Addr ipAddr = IPR_SlaverAddr[ChMap[ipaCh].nRecSlaverId].ipAddr;
+				ChMap[ipaCh].szIPP_Rec.Format("%d.%d.%d.%d", ipAddr.S_un_b.s_b1, 
+					ipAddr.S_un_b.s_b2, 
+					ipAddr.S_un_b.s_b3, 
+					ipAddr.S_un_b.s_b4);
+				ChMap[ipaCh].szIPS_Rec.Format("%d.%d.%d.%d",ipAddr.S_un_b.s_b1, 
+					ipAddr.S_un_b.s_b2, 
+					ipAddr.S_un_b.s_b3, 
+					ipAddr.S_un_b.s_b4);
+
+				if(SsmIPRSendSession(ipaCh, ChMap[ipaCh].szIPP_Rec.GetBuffer(), ChMap[ipaCh].SessionInfo.nFowardingPPort, 
+					ChMap[ipaCh].szIPS_Rec.GetBuffer(), ChMap[ipaCh].SessionInfo.nFowardingSPort) != 0)
 				{
-					LOG4CPLUS_ERROR(log, "Ch:" << i << ","<< GetSsmLastErrMsg());
+					LOG4CPLUS_ERROR(log, "Ch:" << ipaCh << ","<< GetSsmLastErrMsg());
 				}
 				else{
-					LOG4CPLUS_INFO(log,"Ch:" << i << " SendSession to " << ChMap[pEvent->nReference].szIPP.GetBuffer() << ":" << ChMap[pEvent->nReference].nFowardingPPort
-						<<"; " << ChMap[pEvent->nReference].szIPS.GetBuffer() <<":"<<  ChMap[pEvent->nReference].nFowardingSPort);
+					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[ipaCh].szIPS_Rec.GetBuffer() << ":" << ChMap[ipaCh].SessionInfo.nFowardingPPort
+						<<"; " << ChMap[ipaCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[ipaCh].SessionInfo.nFowardingSPort);
 				}
 				ScanSlaver();
 			}
@@ -1777,9 +1502,9 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 #pragma region IPR
 	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
 	{
-		if(SsmIPRActiveAndRecToFile(nCh, ChMap[nCh].nRecSlaverId, ChMap[nCh].pSessionInfo->dwSessionId,
-			ChMap[nCh].pSessionInfo->nPrimaryCodec, &ChMap[nCh].pSessionInfo->nFowardingPPort,
-			&ChMap[nCh].pSessionInfo->nFowardingSPort, 
+		if(SsmIPRActiveAndRecToFile(nCh, IPR_SlaverAddr[ChMap[nCh].nRecSlaverId].nRecSlaverID, ChMap[nCh].SessionInfo.dwSessionId,
+			ChMap[nCh].SessionInfo.nPrimaryCodec, &ChMap[nCh].SessionInfo.nFowardingPPort,
+			&ChMap[nCh].SessionInfo.nFowardingSPort, 
 			szFile, A_LAW, 0, -1, -1, 0) != 0)
 		{
 			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
@@ -1848,11 +1573,11 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 	ChMap[nCh].dwSessionId = 0;
 	ChMap[nCh].nPtlType = -1;
 	ChMap[nCh].nStationId = -1;
-	//ChMap[nCh].nCallRef = -1;
+	ChMap[nCh].nCallRef = -1;
 	ChMap[nCh].szIPP.Empty();
 	ChMap[nCh].szIPS.Empty();
 	ChMap[nCh].nRecSlaverId = -1;
-	ChMap[nCh].nCallRef = -1;
+
 }
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 	switch(nEvent){
