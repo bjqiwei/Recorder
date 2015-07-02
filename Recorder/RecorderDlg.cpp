@@ -605,8 +605,8 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				{
 					if (ChMap[nCh].nState == CH_RECORDING && ChMap[nCh].nChType == CH_TYPE_ANALOG_RECORD){
 						This->StopRecording(nCh);
+						ClearChVariable(nCh);
 					}
-					ClearChVariable(nCh);
 					SetChannelState(nCh,CH_IDLE);
 				}
 				break;
@@ -843,6 +843,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				
 				if(nSlaverCount > 0)
 				{
+					//查找空闲的 IPR通道
 					BOOL bFind = FALSE;
 					int iprCh;
 					for(iprCh=0; iprCh<nMaxCh; iprCh++)
@@ -866,7 +867,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							<< ",StationId:" <<  ChMap[nCh].nStationId << " not find idle IPR channel");
 						break;
 					}
-
+					//关联主被叫号码
 					int key = nStationId;
 					if (key == 0xffff){
 						key = ChMap[nCh].nCallRef;
@@ -883,11 +884,11 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					}
 					else{
 						ChMap[nCh].szCallerId = it->second->szCallerId;
-						ChMap[nCh].szCalleeId = it->second->szCallerId;
+						ChMap[nCh].szCalleeId = it->second->szCalledId;
 						ChMap[iprCh].szCallerId = it->second->szCallerId;
-						ChMap[iprCh].szCalleeId = it->second->szCallerId;
+						ChMap[iprCh].szCalleeId = it->second->szCalledId;
 					}
-
+					//查找空闲的SlaverId
 					int nSlaverIndex = -1;
 					for(int j=0; j<nSlaverCount; j++)
 					{
@@ -913,6 +914,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						<< ",CallRef:" << ChMap[nCh].nCallRef
 						<< ",StationId:" << ChMap[nCh].nStationId<< " Start record");
 					This->UpdateCircuitListCtrl(iprCh);
+					ScanSlaver();
 				}
 				This->UpdateCircuitListCtrl(nCh);
 			}
@@ -949,11 +951,12 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				} 
 				if(bFind)
 				{
+					LOG4CPLUS_INFO(log,"Ch:" << nCh << " find binding IPR channel:" << iprCh);
 					LOG4CPLUS_DEBUG(log, "Ch:" << iprCh << ",stop recording.");
 					This->StopRecording(iprCh);
-					SetChannelState(iprCh, CH_IDLE);
-					ClearChVariable(iprCh);
-					This->UpdateCircuitListCtrl(iprCh);
+				}
+				else{
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << "SessionId:" << ChMap[nCh].dwSessionId <<" not find binding IPR channel");
 				}
 			}
 			break;
@@ -1005,7 +1008,6 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[nCh].szIPS_Rec.GetBuffer() << ":" << ChMap[nCh].SessionInfo.nFowardingPPort
 						<<"; " << ChMap[nCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
 				}
-				ScanSlaver();
 				SetChannelState(nCh,CH_RECORDING);
 				This->UpdateCircuitListCtrl(nCh);
 			}
@@ -1510,7 +1512,10 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 			&ChMap[nCh].SessionInfo.nFowardingSPort, 
 			szFile, A_LAW, 0, -1, -1, 0) != 0)
 		{
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ","<< GetSsmLastErrMsg());
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].SessionInfo.dwSessionId
+				<< " nFowardingPPort:" << ChMap[nCh].SessionInfo.nFowardingPPort
+				<<"; nFowardingSPort:"<<  ChMap[nCh].SessionInfo.nFowardingSPort
+				<< ","<< GetSsmLastErrMsg());
 			return false;
 		}
 		else{
