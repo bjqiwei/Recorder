@@ -381,13 +381,15 @@ void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 	lvItem.iItem = nIndex;
 	lvItem.iSubItem = Channel;    //×ÓÁÐºÅ  
 	if ( ChMap[nIndex].nState == CH_TALKING 
-		||  ChMap[nIndex].nState == CH_RECORDING)
+		|| ChMap[nIndex].nState == CH_RECORDING
+		|| ChMap[nIndex].nState == CH_USING
+		|| ChMap[nIndex].nState == CH_ACTIVE)
 	{
-		lvItem.iImage = 0;  //Í¼Æ¬Ë÷ÒýºÅ(µÚÒ»·ùÍ¼Æ¬)  
+		lvItem.iImage = 1;    //Í¼Æ¬Ë÷ÒýºÅ(µÚ2·ùÍ¼Æ¬)  offHook
 		
 	}else
 	{
-		lvItem.iImage = 1;    //Í¼Æ¬Ë÷ÒýºÅ(µÚ2·ùÍ¼Æ¬)   
+		lvItem.iImage = 0;  //Í¼Æ¬Ë÷ÒýºÅ(µÚÒ»·ùÍ¼Æ¬)  OnHook
 	}
 	CString str;
 	str.Format("%d",nIndex);
@@ -907,6 +909,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 
 					ChMap[iprCh].SessionInfo = *pSessionInfo;
 					ChMap[iprCh].nRecSlaverId = nSlaverIndex;
+					ChMap[iprCh].wRecDirection = CALL_OUT_RECORD;//Ö»Â¼ÍâºôÉùÒô
 					if(This->StartRecording(iprCh)){
 						SetChannelState(iprCh, CH_ACTIVE);
 					}
@@ -1507,6 +1510,11 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 #pragma region IPR
 	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
 	{
+		if(SsmIPRSetMixerType(nCh,ChMap[nCh].wRecDirection)<0)
+		{
+			LOG4CPLUS_ERROR(log,"Ch:" << nCh << "SsmIPRSetMixerType:" << ChMap[nCh].wRecDirection << "," << GetSsmLastErrMsg());
+		}
+
 		if(SsmIPRActiveAndRecToFile(nCh, IPR_SlaverAddr[ChMap[nCh].nRecSlaverId].nRecSlaverID, ChMap[nCh].SessionInfo.dwSessionId,
 			ChMap[nCh].SessionInfo.nPrimaryCodec, &ChMap[nCh].SessionInfo.nFowardingPPort,
 			&ChMap[nCh].SessionInfo.nFowardingSPort, 
