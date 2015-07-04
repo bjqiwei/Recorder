@@ -55,7 +55,7 @@ int CRecorderDlg::nIPABoardId = -1;
 int CRecorderDlg::nSlaverCount = 0;
 int CRecorderDlg::nIPRChNum = 0;
 IPR_SLAVERADDR CRecorderDlg::IPR_SlaverAddr[MAX_SLAVER_COUNT];
-typedef std::map<ULONG,std::shared_ptr<IPR_CALL_INFO>> MAP_IPR_CALL_INFO;
+typedef std::map<ULONG,std::shared_ptr<MYIPR_CALL_INFO>> MAP_IPR_CALL_INFO;
 static MAP_IPR_CALL_INFO g_IPR_CALL_INFO;
 
 CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
@@ -323,6 +323,9 @@ BOOL CRecorderDlg::InitCtiBoard()
 		ChMap[i].nPtlType = -1;
 		ChMap[i].nStationId = -1;
 		ChMap[i].nRecSlaverId = -1;
+		ChMap[i].nFowardingPPort = -1;
+		ChMap[i].nFowardingSPort = -1;
+		ChMap[i].nPrimaryCodec = -1;
 		for(int j=0; j < MAX_ACTIVE_LINE_NUM; j++)
 		{
 			ChMap[i].nSCCPActiveCallref[j] = 0;
@@ -712,7 +715,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						|| pEvent->dwParam == DE_CALL_ABANDONED)
 					{
 						MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
-						if (it != g_IPR_CALL_INFO.end());
+						if (it != g_IPR_CALL_INFO.end())
 						{
 							g_IPR_CALL_INFO.erase(it);
 						}
@@ -721,9 +724,10 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					else if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_CONNECTED)
 					{
 						MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
-						if (it == g_IPR_CALL_INFO.end());
+						if (it == g_IPR_CALL_INFO.end())
 						{
-							PIPR_CALL_INFO pCInfo = new IPR_CALL_INFO(*pCallInfo);
+							PMYIPR_CALL_INFO pCInfo = new MYIPR_CALL_INFO(*pCallInfo);
+							pCInfo->m_nState = pEvent->dwParam;
 
 							g_IPR_CALL_INFO.insert(MAP_IPR_CALL_INFO::value_type(key,pCInfo));
 							LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
@@ -735,7 +739,43 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 								<< ",ReferredBy:" << pCallInfo->szReferredBy
 								<<", ReferTo:" << pCallInfo->szReferTo);
 						}
+						else {
+							it->second->m_nState = pEvent->dwParam;
+						}
 						LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
+
+						if (pEvent->dwParam == DE_CALL_CONNECTED)//开始通话
+						{
+							//查找对应的IPA通道
+							bool bFind =false;
+							int ipaCh ;
+							for (ipaCh=0; ipaCh<nMaxCh; ipaCh++)
+							{
+								if (ChMap[ipaCh].nChType == CH_TYPE_IPA 
+									&& (ChMap[ipaCh].nStationId = nStationId && ChMap[ipaCh].nCallRef == pCallInfo->CallRef)
+									&& ChMap[ipaCh].dwSessionId != 0)
+								{
+									bFind = true;
+									break;
+								}
+							}
+							//开始通话后在IPA通道上找到dwSessionId，表示此通道上已经有媒体 
+							//并且在E_RCV_IPR_MEDIA_SESSION_STARTED逻辑中还没有录音
+							if (bFind)
+							{
+								int iprCh = SerchIdleSlaverAndIPA(ipaCh, CALL_OUT_RECORD);
+								if (iprCh >0)
+								{
+									if(This->StartRecording(iprCh)){
+										SetChannelState(iprCh, CH_ACTIVE);
+									}
+									LOG4CPLUS_INFO(log, "Ch:" << ipaCh << ",SessionId:" << ChMap[ipaCh].dwSessionId 
+										<< ",CallRef:" << ChMap[ipaCh].nCallRef
+										<< ",StationId:" << ChMap[ipaCh].nStationId<< " Start record");
+								}
+								This->UpdateCircuitListCtrl(iprCh);
+							}
+						}
 					}
 				}			
 			break;
@@ -827,99 +867,61 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				ChMap[nCh].nCallRef = pSessionInfo->nCallRef;
 				ChMap[nCh].nStationId = nStationId;
 				ChMap[nCh].nPtlType = nPtlType;
+				ChMap[nCh].nPrimaryCodec = pSessionInfo->nPrimaryCodec;
 
 				ChMap[nCh].szIPP.Format("%d.%d.%d.%d:%d", pSessionInfo->PrimaryAddr.S_un_b.s_b1, pSessionInfo->PrimaryAddr.S_un_b.s_b2, 
 					pSessionInfo->PrimaryAddr.S_un_b.s_b3, pSessionInfo->PrimaryAddr.S_un_b.s_b4, pSessionInfo->PrimaryAddr.usPort);
 				ChMap[nCh].szIPS.Format("%d.%d.%d.%d:%d", pSessionInfo->SecondaryAddr.S_un_b.s_b1, pSessionInfo->SecondaryAddr.S_un_b.s_b2, 
 					pSessionInfo->SecondaryAddr.S_un_b.s_b3, pSessionInfo->SecondaryAddr.S_un_b.s_b4, pSessionInfo->SecondaryAddr.usPort);
 
-				
+
+				//关联主被叫号码等消息
+				int key = nStationId;
+				if (key == 0xffff){
+					key = ChMap[nCh].nCallRef;
+				}
+
+				MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
+
+				if(it == g_IPR_CALL_INFO.end())
+				{
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+						<< ",CallRef:" << ChMap[nCh].nCallRef
+						<< ",StationId:" << nStationId << " not find idle IPR channel");
+					break;
+				}
+				else{
+					ChMap[nCh].szCallerId = it->second->szCallerId;
+					ChMap[nCh].szCalleeId = it->second->szCalledId;
+				}
 
 				LOG4CPLUS_DEBUG(log,  "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId
 					<< ",CallRef:" << ChMap[nCh].nCallRef
 					<< ",StationId:" << ChMap[nCh].nStationId 
+					<< ",nPtlType:" << ChMap[nCh].nPtlType
 					<< ",PrimaryIP:" << ChMap[nCh].szIPP.GetBuffer()
-					<< ",PrimaryCodec:" << pSessionInfo->nPrimaryCodec
+					<< ",PrimaryCodec:" << ChMap[nCh].nPrimaryCodec
 					<< ",SecondaryIP:" << ChMap[nCh].szIPS.GetBuffer()
-					<< ",SecondaryCodec:" << pSessionInfo->nSecondaryCodec);
+					<< ",szCallerId:" << ChMap[nCh].szCallerId
+					<< ",szCalleeId:" << ChMap[nCh].szCalleeId);
 				
-				if(nSlaverCount > 0)
+				if (it->second->m_nState == DE_CALL_CONNECTED)
 				{
-					//查找空闲的 IPR通道
-					BOOL bFind = FALSE;
-					int iprCh;
-					for(iprCh=0; iprCh<nMaxCh; iprCh++)
+					int iprCh = SerchIdleSlaverAndIPA(nCh, CALL_OUT_RECORD);
+					if (iprCh >0)
 					{
-						if(ChMap[iprCh].nChType == CH_TYPE_IPR 
-							&& ChMap[iprCh].nState == CH_IDLE)
-						{
-							ChMap[iprCh].dwSessionId = ChMap[nCh].dwSessionId;
-							ChMap[iprCh].nStationId = ChMap[nCh].nCallRef;
-							ChMap[iprCh].nCallRef = ChMap[nCh].nStationId;
-							ChMap[iprCh].nPtlType = ChMap[nCh].nPtlType;
-							bFind = TRUE;
-							break;
+						if(This->StartRecording(iprCh)){
+							SetChannelState(iprCh, CH_ACTIVE);
 						}
-					}
-					
-					if(!bFind)
-					{
-						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
-							<< ",CallRef:" <<  ChMap[nCh].nCallRef
-							<< ",StationId:" <<  ChMap[nCh].nStationId << " not find idle IPR channel");
-						break;
-					}
-					//关联主被叫号码
-					int key = nStationId;
-					if (key == 0xffff){
-						key = ChMap[nCh].nCallRef;
-					}
-
-					MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
-
-					if(it == g_IPR_CALL_INFO.end())
-					{
-						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+						LOG4CPLUS_INFO(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
 							<< ",CallRef:" << ChMap[nCh].nCallRef
-							<< ",StationId:" << nStationId << " not find idle IPR channel");
-						break;
+							<< ",StationId:" << ChMap[nCh].nStationId<< " Start record");
 					}
-					else{
-						ChMap[nCh].szCallerId = it->second->szCallerId;
-						ChMap[nCh].szCalleeId = it->second->szCalledId;
-						ChMap[iprCh].szCallerId = it->second->szCallerId;
-						ChMap[iprCh].szCalleeId = it->second->szCalledId;
-					}
-					//查找空闲的SlaverId
-					int nSlaverIndex = -1;
-					for(int j=0; j<nSlaverCount; j++)
-					{
-						if(IPR_SlaverAddr[j].nTotalResources - IPR_SlaverAddr[j].nUsedResources > 0)
-						{
-							nSlaverIndex = j;
-							break;
-						}
-					}
-					if(nSlaverIndex < 0){
-						LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
-							<< ",CallRef:" << ChMap[nCh].nCallRef
-							<< ",StationId:" << ChMap[nCh].nStationId << "not find idle Slaver");
-						break;
-					}
-
-					ChMap[iprCh].SessionInfo = *pSessionInfo;
-					ChMap[iprCh].nRecSlaverId = nSlaverIndex;
-					ChMap[iprCh].wRecDirection = CALL_OUT_RECORD;//只录外呼声音
-					if(This->StartRecording(iprCh)){
-						SetChannelState(iprCh, CH_ACTIVE);
-					}
-					LOG4CPLUS_INFO(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
-						<< ",CallRef:" << ChMap[nCh].nCallRef
-						<< ",StationId:" << ChMap[nCh].nStationId<< " Start record");
 					This->UpdateCircuitListCtrl(iprCh);
-					ScanSlaver();
 				}
+
 				This->UpdateCircuitListCtrl(nCh);
+				ScanSlaver();
 			}
 			break;
 #pragma endregion E_RCV_IPR_MEDIA_SESSION_STARTED
@@ -961,6 +963,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				else{
 					LOG4CPLUS_ERROR(log, "Ch:" << nCh << "SessionId:" << ChMap[nCh].dwSessionId <<" not find binding IPR channel");
 				}
+				ClearChVariable(nCh);
 			}
 			break;
 #pragma endregion E_RCV_IPR_AUX_MEDIA_SESSION_STOPED
@@ -992,24 +995,15 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_INFO(log,"Ch:" << nCh << " find binding IPA channel:" << ipaCh);
 				}
 
-				IPR_Addr ipAddr = IPR_SlaverAddr[ChMap[nCh].nRecSlaverId].ipAddr;
-				ChMap[nCh].szIPP_Rec.Format("%d.%d.%d.%d", ipAddr.S_un_b.s_b1, 
-					ipAddr.S_un_b.s_b2, 
-					ipAddr.S_un_b.s_b3, 
-					ipAddr.S_un_b.s_b4);
-				ChMap[nCh].szIPS_Rec.Format("%d.%d.%d.%d",ipAddr.S_un_b.s_b1, 
-					ipAddr.S_un_b.s_b2, 
-					ipAddr.S_un_b.s_b3, 
-					ipAddr.S_un_b.s_b4);
 
-				if(SsmIPRSendSession(ipaCh, ChMap[nCh].szIPP_Rec.GetBuffer(), ChMap[nCh].SessionInfo.nFowardingPPort, 
-					ChMap[nCh].szIPS_Rec.GetBuffer(), ChMap[nCh].SessionInfo.nFowardingSPort) != 0)
+				if(SsmIPRSendSession(ipaCh, ChMap[nCh].szIPP_Rec.GetBuffer(), ChMap[nCh].nFowardingPPort, 
+					ChMap[nCh].szIPS_Rec.GetBuffer(), ChMap[nCh].nFowardingSPort) != 0)
 				{
 					LOG4CPLUS_ERROR(log, "Ch:" << ipaCh << ","<< GetSsmLastErrMsg());
 				}
 				else{
-					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[nCh].szIPS_Rec.GetBuffer() << ":" << ChMap[nCh].SessionInfo.nFowardingPPort
-						<<"; " << ChMap[nCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
+					LOG4CPLUS_INFO(log,"Ch:" << ipaCh << " SendSession to " << ChMap[nCh].szIPS_Rec.GetBuffer() << ":" << ChMap[nCh].nFowardingPPort
+						<<"; " << ChMap[nCh].szIPS_Rec.GetBuffer() <<":"<<  ChMap[nCh].nFowardingSPort);
 				}
 				SetChannelState(nCh,CH_RECORDING);
 				This->UpdateCircuitListCtrl(nCh);
@@ -1515,21 +1509,21 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 			LOG4CPLUS_ERROR(log,"Ch:" << nCh << "SsmIPRSetMixerType:" << ChMap[nCh].wRecDirection << "," << GetSsmLastErrMsg());
 		}
 
-		if(SsmIPRActiveAndRecToFile(nCh, IPR_SlaverAddr[ChMap[nCh].nRecSlaverId].nRecSlaverID, ChMap[nCh].SessionInfo.dwSessionId,
-			ChMap[nCh].SessionInfo.nPrimaryCodec, &ChMap[nCh].SessionInfo.nFowardingPPort,
-			&ChMap[nCh].SessionInfo.nFowardingSPort, 
+		if(SsmIPRActiveAndRecToFile(nCh, ChMap[nCh].nRecSlaverId, ChMap[nCh].dwSessionId,
+			ChMap[nCh].nPrimaryCodec, &ChMap[nCh].nFowardingPPort,
+			&ChMap[nCh].nFowardingSPort, 
 			szFile, A_LAW, 0, -1, -1, 0) != 0)
 		{
-			LOG4CPLUS_ERROR(log, "Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].SessionInfo.dwSessionId
-				<< " nFowardingPPort:" << ChMap[nCh].SessionInfo.nFowardingPPort
-				<<"; nFowardingSPort:"<<  ChMap[nCh].SessionInfo.nFowardingSPort
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].dwSessionId
+				<< " nFowardingPPort:" << ChMap[nCh].nFowardingPPort
+				<<"; nFowardingSPort:"<<  ChMap[nCh].nFowardingSPort
 				<< ","<< GetSsmLastErrMsg());
 			return false;
 		}
 		else{
-			LOG4CPLUS_INFO(log,"Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].SessionInfo.dwSessionId
-				<< " nFowardingPPort:" << ChMap[nCh].SessionInfo.nFowardingPPort
-				<<"; nFowardingSPort:"<<  ChMap[nCh].SessionInfo.nFowardingSPort);
+			LOG4CPLUS_INFO(log,"Ch:" << nCh << " IPRActiveAndRecToFile  dwSessionId:" << ChMap[nCh].dwSessionId
+				<< " nFowardingPPort:" << ChMap[nCh].nFowardingPPort
+				<<"; nFowardingSPort:"<<  ChMap[nCh].nFowardingSPort);
 		}
 	}
 #pragma endregion IPR
@@ -1600,6 +1594,9 @@ void CRecorderDlg::ClearChVariable(unsigned long nCh)
 	ChMap[nCh].szIPP.Empty();
 	ChMap[nCh].szIPS.Empty();
 	ChMap[nCh].nRecSlaverId = -1;
+	ChMap[nCh].nFowardingPPort = -1;
+	ChMap[nCh].nFowardingSPort = -1;
+	ChMap[nCh].nPrimaryCodec = -1;
 
 }
 std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
@@ -2632,4 +2629,70 @@ void CRecorderDlg::StartSlaver()
 				<< ", TotalResources:" << m_nInitTotalResources );
 		}
 	}
+}
+
+int CRecorderDlg::SerchIdleSlaverAndIPA(int nCh, RECORD_DIRECTION rDirction)
+{
+	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
+	if(nSlaverCount > 0)
+	{
+		//查找空闲的 IPR通道
+		BOOL bFind = FALSE;
+		int iprCh ;
+		for(iprCh=0; iprCh<nMaxCh; iprCh++)
+		{
+			if(ChMap[iprCh].nChType == CH_TYPE_IPR 
+				&& ChMap[iprCh].nState == CH_IDLE)
+			{
+				ChMap[iprCh].dwSessionId = ChMap[nCh].dwSessionId;
+				ChMap[iprCh].nStationId = ChMap[nCh].nStationId;
+				ChMap[iprCh].nCallRef = ChMap[nCh].nCallRef;
+				ChMap[iprCh].nPtlType = ChMap[nCh].nPtlType;
+				ChMap[iprCh].szCalleeId = ChMap[nCh].szCalleeId;
+				ChMap[iprCh].szCallerId = ChMap[nCh].szCallerId;
+				ChMap[iprCh].nPrimaryCodec = ChMap[nCh].nPrimaryCodec;
+				ChMap[iprCh].wRecDirection = rDirction;//只录外呼声音
+				bFind = TRUE;
+				break;
+			}
+		}
+
+		if(!bFind)
+		{
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+				<< ",CallRef:" <<  ChMap[nCh].nCallRef
+				<< ",StationId:" <<  ChMap[nCh].nStationId << " not find idle IPR channel");
+			return -1;
+		}
+
+		//查找空闲的SlaverId
+		int nSlaverIndex = -1;
+		for(int j=0; j<nSlaverCount; j++)
+		{
+			if(IPR_SlaverAddr[j].nTotalResources - IPR_SlaverAddr[j].nUsedResources > 0)
+			{
+				nSlaverIndex = j;
+				break;
+			}
+		}
+		if(nSlaverIndex < 0){
+			LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+				<< ",CallRef:" << ChMap[nCh].nCallRef
+				<< ",StationId:" << ChMap[nCh].nStationId << "not find idle Slaver");
+			return -2;
+		}
+
+		ChMap[iprCh].nRecSlaverId = IPR_SlaverAddr[nSlaverIndex].nRecSlaverID;
+		IPR_Addr ipAddr = IPR_SlaverAddr[nSlaverIndex].ipAddr;
+		ChMap[iprCh].szIPP_Rec.Format("%d.%d.%d.%d", ipAddr.S_un_b.s_b1, 
+			ipAddr.S_un_b.s_b2, 
+			ipAddr.S_un_b.s_b3, 
+			ipAddr.S_un_b.s_b4);
+		ChMap[iprCh].szIPS_Rec.Format("%d.%d.%d.%d",ipAddr.S_un_b.s_b1, 
+			ipAddr.S_un_b.s_b2, 
+			ipAddr.S_un_b.s_b3, 
+			ipAddr.S_un_b.s_b4);
+		return iprCh;
+	}
+	return -1;
 }

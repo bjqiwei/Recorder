@@ -114,11 +114,20 @@ typedef struct tagCH_INFO
 	CString		szIPS;			//		IP address of slavery
 	CString		szIPP_Rec;
 	CString		szIPS_Rec;
+	int			nFowardingPPort;
+	int			nFowardingSPort;
+	int			nPrimaryCodec;
 	int			nRecSlaverId;				//		Destination Slaver
 	int			nSCCPActiveCallref[MAX_ACTIVE_LINE_NUM];
-	IPR_SessionInfo SessionInfo;
 	
 }CH_INFO;
+
+//∫ÙΩ––≈œ¢
+typedef struct tagMYIPR_CALL_INFO:public IPR_CALL_INFO
+{
+	int m_nState;
+	tagMYIPR_CALL_INFO(const tagIPR_CALL_INFO & other):tagIPR_CALL_INFO(other){};
+}MYIPR_CALL_INFO, *PMYIPR_CALL_INFO;
 
 class CRecorderDlg : public CDialogEx
 {
@@ -211,6 +220,7 @@ public:
 	static void GetCallee(unsigned long nIndex);
 	static void GetCallerAndCallee(unsigned long nIndex);
 	static void ClearChVariable(unsigned long nCh);
+	static int SerchIdleSlaverAndIPA(int nCh, RECORD_DIRECTION rDirction);
 	static void ScanSlaver();
 	static void StartSlaver();
 	bool CreateMultipleDirectory(const CString& szPath);
