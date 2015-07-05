@@ -692,7 +692,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma region E_RCV_IPR_DChannel
 		case E_RCV_IPR_DChannel:
 		{
-			LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
+			//LOG4CPLUS_DEBUG(log, "SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
 			int nPtlType = pEvent->dwXtraInfo >> 16;
 			int nStationId = pEvent->dwXtraInfo & 0xffff;
 			switch(nPtlType) 
@@ -704,7 +704,8 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 				{
 					//LOG4CPLUS_DEBUG(log, "PTL_SIP");
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
-					
+					LOG4CPLUS_TRACE(log, "StationId:" << nStationId<< ",CallRef:" << pCallInfo->CallRef 
+						<< ",SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
 					int key = nStationId;
 					if (nStationId == 0xffff){
 						key = pCallInfo->CallRef;
@@ -719,7 +720,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						{
 							g_IPR_CALL_INFO.erase(it);
 						}
-						LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
+						LOG4CPLUS_TRACE(log, "StationId:" << nStationId<< ",CallRef:" << pCallInfo->CallRef << ",erase IPR CALL INFO g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
 					}
 					else if(pEvent->dwParam >= DE_CALL_IN_PROGRESS && pEvent->dwParam <= DE_CALL_CONNECTED)
 					{
@@ -730,8 +731,9 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							pCInfo->m_nState = pEvent->dwParam;
 
 							g_IPR_CALL_INFO.insert(MAP_IPR_CALL_INFO::value_type(key,pCInfo));
-							LOG4CPLUS_DEBUG(log, "CallRef:" << pCallInfo->CallRef
-								<<",StationId:" << nStationId
+							LOG4CPLUS_DEBUG(log, "StationId:" << nStationId
+								<<",CallRef:" << pCallInfo->CallRef
+								<< ",insert IPR CALL INFO g_IPR_CALL_INFO.size: " << g_IPR_CALL_INFO.size()
 								<<",CallSource:" << pCallInfo->CallSource
 								<<",Cause:" << pCallInfo->Cause
 								<<",CallerId:" << pCallInfo->szCallerId
@@ -742,7 +744,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						else {
 							it->second->m_nState = pEvent->dwParam;
 						}
-						LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
+						//LOG4CPLUS_TRACE(log, "g_IPR_CALL_INFO.size:" << g_IPR_CALL_INFO.size());
 
 						if (pEvent->dwParam == DE_CALL_CONNECTED)//开始通话
 						{
@@ -752,7 +754,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							for (ipaCh=0; ipaCh<nMaxCh; ipaCh++)
 							{
 								if (ChMap[ipaCh].nChType == CH_TYPE_IPA 
-									&& (ChMap[ipaCh].nStationId = nStationId && ChMap[ipaCh].nCallRef == pCallInfo->CallRef)
+									&& ((ChMap[ipaCh].nStationId != -1 && ChMap[ipaCh].nStationId == nStationId ) || (ChMap[ipaCh].nStationId == -1 && ChMap[ipaCh].nCallRef == pCallInfo->CallRef))
 									&& ChMap[ipaCh].dwSessionId != 0)
 								{
 									bFind = true;
