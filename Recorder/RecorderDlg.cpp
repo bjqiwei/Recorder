@@ -752,7 +752,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							for (ipaCh=0; ipaCh<nMaxCh; ipaCh++)
 							{
 								if (ChMap[ipaCh].nChType == CH_TYPE_IPA 
-									&& ((ChMap[ipaCh].nStationId != -1 && ChMap[ipaCh].nStationId == nStationId ) || (ChMap[ipaCh].nStationId == -1 && ChMap[ipaCh].nCallRef == pCallInfo->CallRef))
+									&& (ChMap[ipaCh].nCallRef == pCallInfo->CallRef)
 									&& ChMap[ipaCh].dwSessionId != 0)
 								{
 									bFind = true;
