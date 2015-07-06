@@ -706,10 +706,8 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					PIPR_CALL_INFO pCallInfo = (PIPR_CALL_INFO)pEvent->pvBuffer;
 					LOG4CPLUS_TRACE(log, "StationId:" << nStationId<< ",CallRef:" << pCallInfo->CallRef 
 						<< ",SanHui nEventCode:" << GetShEventName(nEventCode) << ", State:" << GetDSTStateName(pEvent->dwParam));
-					int key = nStationId;
-					if (nStationId == 0xffff){
-						key = pCallInfo->CallRef;
-					}
+					int key  = pCallInfo->CallRef;
+					
 					if(pEvent->dwParam == DE_CALL_RELEASED 
 						|| pEvent->dwParam == DE_CALL_SUSPENDED 
 						|| pEvent->dwParam == DE_CALL_REJECTED 
@@ -881,10 +879,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 
 
 				//关联主被叫号码等消息
-				int key = nStationId;
-				if (key == 0xffff){
-					key = ChMap[nCh].nCallRef;
-				}
+				int key = ChMap[nCh].nCallRef;
 
 				MAP_IPR_CALL_INFO::const_iterator it = g_IPR_CALL_INFO.find(key);
 
