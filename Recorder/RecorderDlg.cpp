@@ -765,6 +765,9 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 							//并且在E_RCV_IPR_MEDIA_SESSION_STARTED逻辑中还没有录音
 							if (bFind)
 							{
+								LOG4CPLUS_INFO(log,"StationId:" << nStationId
+									<<",CallRef:" << pCallInfo->CallRef 
+									<< ", find IPA channel:" << ipaCh);
 								int iprCh = SerchIdleSlaverAndIPA(ipaCh, CALL_OUT_RECORD);
 								if (iprCh >0)
 								{
@@ -912,6 +915,11 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					int iprCh = SerchIdleSlaverAndIPA(nCh, CALL_OUT_RECORD);
 					if (iprCh >0)
 					{
+						LOG4CPLUS_INFO(log,"Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId
+							<< ",CallRef:" << ChMap[nCh].nCallRef
+							<< ",StationId:" << ChMap[nCh].nStationId 
+							<< ",get a IPA channel:" << iprCh);
+
 						if(This->StartRecording(iprCh)){
 							SetChannelState(iprCh, CH_ACTIVE);
 						}
@@ -963,7 +971,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					This->StopRecording(iprCh);
 				}
 				else{
-					LOG4CPLUS_ERROR(log, "Ch:" << nCh << "SessionId:" << ChMap[nCh].dwSessionId <<" not find binding IPR channel");
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId <<" not find binding IPR channel");
 				}
 				ClearChVariable(nCh);
 			}
@@ -1581,6 +1589,8 @@ void CRecorderDlg::GetCallerAndCallee(unsigned long nIndex)
 
 void CRecorderDlg::ClearChVariable(unsigned long nCh)
 {
+	static log4cplus::Logger log = log4cplus::Logger::getInstance("Recorder");
+	LOG4CPLUS_DEBUG(log, "Ch:" << nCh << ",ClearChVariable");
 	ChMap[nCh].szDtmf.Empty();
 	ChMap[nCh].szCalleeId.Empty();
 	ChMap[nCh].szCallerId.Empty();
