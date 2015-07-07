@@ -918,7 +918,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						if(This->StartRecording(iprCh)){
 							SetChannelState(iprCh, CH_ACTIVE);
 						}
-						LOG4CPLUS_INFO(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+						LOG4CPLUS_INFO(log, "Ch:" << iprCh << ",SessionId:" << ChMap[nCh].dwSessionId 
 							<< ",CallRef:" << ChMap[nCh].nCallRef
 							<< ",StationId:" << ChMap[nCh].nStationId<< " Start record");
 					}
@@ -977,10 +977,22 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 			{
 				int nCh = pEvent->nReference;
 				LOG4CPLUS_DEBUG(log, "Ch:" << nCh << ",SanHui nEventCode:" << GetShEventName(nEventCode));
-				if(pEvent->dwParam & 0xffff)	//error occurred
+				int err = (int)(pEvent->dwParam & 0xffff);
+				if(err)	//error occurred
 				{
-					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pEvent->dwSubReason << ",error code:"<< (int)(pEvent->dwParam & 0xffff) );
-					ClearChVariable(nCh);
+					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pEvent->dwSubReason << ",error code:"<< err);
+					if(err == 0x6)
+					{
+						if(This->StartRecording(nCh)){
+							SetChannelState(nCh, CH_ACTIVE);
+						}
+						LOG4CPLUS_INFO(log, "Ch:" << nCh << ",SessionId:" << ChMap[nCh].dwSessionId 
+							<< ",CallRef:" << ChMap[nCh].nCallRef
+							<< ",StationId:" << ChMap[nCh].nStationId<< " ReStart record.");
+					}
+					else{
+						ClearChVariable(nCh);
+					}
 					break;
 				}
 				BOOL bFind = FALSE;
