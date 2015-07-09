@@ -251,7 +251,15 @@ BOOL CRecorderDlg::InitCtiBoard()
 		LOG4CPLUS_ERROR(log, GetSsmLastErrMsg());
 		return FALSE;
 	}
-
+	//序列号检查
+	DWORD SerialNo = SsmGetPciSerialNo(0);
+	LOG4CPLUS_INFO(log,"SerialNo:" << SerialNo);
+	if (SerialNo != 190997)
+	{
+		MessageBox("此程序只允许在特定的版本上允许，请联系开发者","序列号错误",MB_OK);
+		LOG4CPLUS_ERROR(log, "此程序只允许在特定的版本上允许，请联系开发者");
+		return FALSE;
+	}
 	for( int i=0; i < nTotalBoards; i++)
 	{
 		if(SsmGetBoardModel(i) == 0xfd)	//IPRecorder card type is 0xfd
