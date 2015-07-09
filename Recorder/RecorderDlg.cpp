@@ -641,6 +641,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 #pragma region S_CALL_TALKING
 			case S_CALL_TALKING:
 				{
+					SetChannelState(nCh, CH_TALKING);
 					if (This->StartRecording(nCh)){
 						SetChannelState(nCh, CH_RECORDING);
 					}
@@ -1529,6 +1530,14 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 #pragma region IPR
 	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
 	{
+		CString _Caller = ChMap[nCh].szCallerId.Left(ChMap[nCh].szCallerId.Find("@"));
+		LOG4CPLUS_TRACE(log,"Ch:" << nCh << "Caller:" << _Caller.GetBuffer());
+		if(_Caller != "sip:24117496")
+		{
+			LOG4CPLUS_WARN(log,"Ch:" << nCh << "Caller:" << _Caller.GetBuffer() << ", not recording" );
+			return false;
+		}
+
 		if(SsmIPRSetMixerType(nCh,ChMap[nCh].wRecDirection)<0)
 		{
 			LOG4CPLUS_ERROR(log,"Ch:" << nCh << "SsmIPRSetMixerType:" << ChMap[nCh].wRecDirection << "," << GetSsmLastErrMsg());
