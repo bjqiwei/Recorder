@@ -110,7 +110,7 @@ BOOL CADODatabase::Open(LPCTSTR lpstrConnection, LPCTSTR lpstrUserID, LPCTSTR lp
 	if(strcmp(lpstrConnection, _T("")) != 0)
 		m_strConnection = lpstrConnection;
 
-	ASSERT(!m_strConnection.IsEmpty());
+	//ASSERT(!m_strConnection.IsEmpty());
 
 	try
 	{
@@ -139,7 +139,7 @@ void CADODatabase::dump_com_error(_com_error &e)
 	m_strLastError = _T("Connection String = " + GetConnectionString() + '\n' + ErrorStr);
 	m_dwLastError = e.Error(); 
 	#ifdef _DEBUG
-		AfxMessageBox(ErrorStr, MB_OK | MB_ICONERROR );
+		//AfxMessageBox(ErrorStr, MB_OK | MB_ICONERROR );
 	#endif
 	throw CADOException(e.Error(), e.Description());
 }
@@ -200,7 +200,7 @@ BOOL CADORecordset::Open(_ConnectionPtr mpdb, LPCTSTR lpstrExec, int nOption)
 	if(strcmp(lpstrExec, _T("")) != 0)
 		m_strQuery = lpstrExec;
 
-	ASSERT(!m_strQuery.IsEmpty());
+	//ASSERT(!m_strQuery.IsEmpty());
 
 	if(m_pConnection == NULL)
 		m_pConnection = mpdb;
@@ -244,8 +244,8 @@ BOOL CADORecordset::Open(_ConnectionPtr mpdb, LPCTSTR lpstrExec, int nOption)
 
 BOOL CADORecordset::Open(LPCTSTR lpstrExec, int nOption)
 {
-	ASSERT(m_pConnection != NULL);
-	ASSERT(m_pConnection->GetState() != adStateClosed);
+	//ASSERT(m_pConnection != NULL);
+	//ASSERT(m_pConnection->GetState() != adStateClosed);
 	return Open(m_pConnection, lpstrExec, nOption);
 }
 
@@ -1125,8 +1125,8 @@ void CADORecordset::Close()
 
 BOOL CADODatabase::Execute(LPCTSTR lpstrExec)
 {
-	ASSERT(m_pConnection != NULL);
-	ASSERT(strcmp(lpstrExec, _T("")) != 0);
+	//ASSERT(m_pConnection != NULL);
+	//ASSERT(strcmp(lpstrExec, _T("")) != 0);
 	_variant_t vRecords;
 	
 	m_nRecordsAffected = 0;
@@ -1780,7 +1780,7 @@ BOOL CADORecordset::Find(LPCTSTR lpFind, int nSearchDirection)
 	m_strFind = lpFind;
 	m_nSearchDirection = nSearchDirection;
 
-	ASSERT(!m_strFind.IsEmpty());
+	//ASSERT(!m_strFind.IsEmpty());
 
 	if(m_nSearchDirection == searchForward)
 	{
@@ -1888,7 +1888,7 @@ BOOL CADORecordset::Clone(CADORecordset &pRs)
 
 BOOL CADORecordset::SetFilter(LPCTSTR strFilter)
 {
-	ASSERT(IsOpen());
+	//ASSERT(IsOpen());
 	
 	try
 	{
@@ -1904,7 +1904,7 @@ BOOL CADORecordset::SetFilter(LPCTSTR strFilter)
 
 BOOL CADORecordset::SetSort(LPCTSTR strCriteria)
 {
-	ASSERT(IsOpen());
+	//ASSERT(IsOpen());
 	
 	try
 	{
@@ -1922,7 +1922,7 @@ BOOL CADORecordset::SaveAsXML(LPCTSTR lpstrXMLFile)
 {
 	HRESULT hr;
 
-	ASSERT(IsOpen());
+	//ASSERT(IsOpen());
 	
 	try
 	{
@@ -1961,7 +1961,7 @@ BOOL CADORecordset::Execute(CADOCommand* pAdoCommand)
 	if(IsOpen())
 		Close();
 
-	ASSERT(!pAdoCommand->GetText().IsEmpty());
+	//ASSERT(!pAdoCommand->GetText().IsEmpty());
 	try
 	{
 		m_pConnection->CursorLocation = adUseClient;
@@ -2012,7 +2012,7 @@ CADOCommand::CADOCommand(CADODatabase* pAdoDatabase, CString strCommandText, int
 
 BOOL CADOCommand::AddParameter(CADOParameter* pAdoParameter)
 {
-	ASSERT(pAdoParameter->GetParameter() != NULL);
+	//ASSERT(pAdoParameter->GetParameter() != NULL);
 
 	try
 	{
@@ -2103,7 +2103,7 @@ BOOL CADOCommand::AddParameter(CString strName, int nType, int nDirection, long 
 
 void CADOCommand::SetText(CString strCommandText)
 {
-	ASSERT(!strCommandText.IsEmpty());
+	//ASSERT(!strCommandText.IsEmpty());
 
 	m_strCommandText = strCommandText;
 	m_pCommand->CommandText = m_strCommandText.AllocSysString();
@@ -2173,7 +2173,7 @@ BOOL CADOParameter::SetValue(int nValue)
 {
 	_variant_t vtVal;
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 	
 	vtVal.vt = VT_I2;
 	vtVal.iVal = nValue;
@@ -2198,7 +2198,7 @@ BOOL CADOParameter::SetValue(long lValue)
 {
 	_variant_t vtVal;
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 	
 	vtVal.vt = VT_I4;
 	vtVal.lVal = lValue;
@@ -2222,7 +2222,7 @@ BOOL CADOParameter::SetValue(double dblValue)
 {
 	_variant_t vtVal;
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 	
 	vtVal.vt = VT_R8;
 	vtVal.dblVal = dblValue;
@@ -2246,7 +2246,7 @@ BOOL CADOParameter::SetValue(CString strValue)
 {
 	_variant_t vtVal;
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 	
 	if(!strValue.IsEmpty())
 		vtVal.vt = VT_BSTR;
@@ -2278,7 +2278,7 @@ BOOL CADOParameter::SetValue(COleDateTime time)
 {
 	_variant_t vtVal;
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 	
 	vtVal.vt = VT_DATE;
 	vtVal.date = time;
@@ -2301,7 +2301,7 @@ BOOL CADOParameter::SetValue(COleDateTime time)
 BOOL CADOParameter::SetValue(_variant_t vtValue)
 {
 
-	ASSERT(m_pParameter != NULL);
+	//ASSERT(m_pParameter != NULL);
 
 	try
 	{
