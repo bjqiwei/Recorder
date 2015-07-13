@@ -1530,13 +1530,13 @@ bool CRecorderDlg::StartRecording(unsigned long nCh){
 #pragma region IPR
 	else if (ChMap[nCh].nChType == CH_TYPE_IPR)
 	{
-		CString _Caller = ChMap[nCh].szCallerId.Left(ChMap[nCh].szCallerId.Find("@"));
+		/*CString _Caller = ChMap[nCh].szCallerId.Left(ChMap[nCh].szCallerId.Find("@"));
 		LOG4CPLUS_TRACE(log,"Ch:" << nCh << "Caller:" << _Caller.GetBuffer());
 		if(_Caller != "sip:24117496")
 		{
 			LOG4CPLUS_WARN(log,"Ch:" << nCh << "Caller:" << _Caller.GetBuffer() << ", not recording" );
 			return false;
-		}
+		}*/
 
 		if(SsmIPRSetMixerType(nCh,ChMap[nCh].wRecDirection)<0)
 		{
