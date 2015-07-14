@@ -449,7 +449,6 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 						This->StopRecording(nCic);
 						ClearChVariable(nCic);
 						SetChannelState(nCic,CH_IDLE);
-						This->UpdateData(FALSE);
 					}
 					break;
 #pragma endregion ¿ÕÏÐ
@@ -1107,6 +1106,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 		}
 		break;
 	}
+	This->UpdateData(FALSE);
 	return 0;
 }
 
