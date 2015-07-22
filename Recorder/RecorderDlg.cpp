@@ -1014,7 +1014,7 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					}
 				}
 				if(!bFind){
-					LOG4CPLUS_ERROR(log, "Ch:" << nCh << "not find binding IPA channel");
+					LOG4CPLUS_ERROR(log, "Ch:" << nCh << " not find binding IPA channel");
 					break;
 				}else{
 					LOG4CPLUS_INFO(log,"Ch:" << nCh << " find binding IPA channel:" << ipaCh);
@@ -1369,9 +1369,9 @@ void CRecorderDlg::checkDiskSize(void)
 
 bool CRecorderDlg::StopRecording(unsigned long nCh)
 {
-	if(ChMap[nCh].nState != CH_RECORDING){
+	/*if(ChMap[nCh].nState != CH_RECORDING){
 		return false;
-	}
+	}*/
 	LOG4CPLUS_TRACE(log,"Ch:" << nCh << " Stop recording.");
 
 #pragma region E1
