@@ -991,6 +991,10 @@ int CALLBACK CRecorderDlg::EventCallback(PSSM_EVENT pEvent)
 					LOG4CPLUS_ERROR(log, "Ch:" << pEvent->nReference << ",SessionId:" << pEvent->dwSubReason << ",error code:"<< err);
 					if(err == 0x6)
 					{
+						//清除失败时对录音计数的累加
+						ChMap[nCh].nRecordTimes--;
+						This->m_RecordingSum--;
+						///////////////////////////
 						if(This->StartRecording(nCh)){
 							SetChannelState(nCh, CH_ACTIVE);
 						}
