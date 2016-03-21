@@ -227,7 +227,30 @@ BOOL CRecorderDlg::InitCtiBoard()
 		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		return FALSE;
 	}
-
+	DWORD SerialNo = SsmGetPciSerialNo(0);
+		 LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"1" << SerialNo);
+		if (SerialNo != 173197)
+		{ 
+		  MessageBox("此程序只允许在特定的版本上运行，请联系开发者","序列号错误",MB_OK);
+           LOG4CPLUS_ERROR(log, "此程序只允许在特定的版本上运行，请联系开发者");
+             return FALSE;
+		}
+		SerialNo = SsmGetPciSerialNo(1);
+		 LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"2" << SerialNo);
+	    if (SerialNo != 214502)
+		{ 
+		   MessageBox("此程序只允许在特定的版本上运行，请联系开发者","序列号错误",MB_OK);
+           LOG4CPLUS_ERROR(log, "此程序只允许在特定的版本上运行，请联系开发者");
+             return FALSE;
+		}
+	    SerialNo = SsmGetPciSerialNo(2);
+		 LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"3" << SerialNo);
+	    if (SerialNo != 173207)
+		{ 
+		   MessageBox("此程序只允许在特定的版本上运行，请联系开发者","序列号错误",MB_OK);
+           LOG4CPLUS_ERROR(log, "此程序只允许在特定的版本上运行，请联系开发者");
+           return FALSE;
+		}
 	//Judge if the number of initialized boards is the same as
 	//		   that of boards specified in the configuration file
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
@@ -422,18 +445,8 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							{
 								break;
 							}
-						}*/
-						//根据主被叫号码判断录音方向  83023240
-						if(ChMap[nCic].szCallerId=="10106789"||ChMap[nCic].szCallerId=="4008201111"){
-							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
-							//ChMap[nCic].szCallerId="83023240";
-							//ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-						}else{
-							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
-							// ChMap[nCic].szCalleeId.ReleaseBuffer();
-							//break;
-						} 
-						/*
+						}
+						
 						if(ChMap[nCic].szCallerId.Compare("4008001100")){
 						   ChMap[nCic].szCalleeId.ReleaseBuffer();
 						   LOG4CPLUS_INFO(log, "Ch:" << nCic << "主叫号码判断不通过。");
@@ -449,6 +462,13 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							st.wYear, st.wMonth, st.wDay, 
 							st.wHour, st.wMinute, st.wSecond,
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
+						
+							//根据主被叫号码判断录音方向
+						if(ChMap[nCic].szCallerId == "57062888"){
+							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
+						}else{
+							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+						} 
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
 							SetChannelState(nCic, STATE_RECORDING);
