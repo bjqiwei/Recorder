@@ -138,7 +138,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	m_DBKeepDays = ReadRegKeyDWORD("DBKeepDays");
 	m_DetailLog = ReadRegKeyDWORD("DetailLog");
 	ReadRegKeyDWORD("AutoBackup") == 1 ? m_AutoBackup =1:NULL;
-		// sql wrb m_sqlServerDB.startDataBaseThread();
+	m_sqlServerDB.startDataBaseThread();
 	checkDiskSize();
 	UpdateData(FALSE);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -255,9 +255,9 @@ BOOL CRecorderDlg::InitCtiBoard()
 	//		   that of boards specified in the configuration file
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
 	{
-		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message
-		CErrMsg.ReleaseBuffer();
+		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message	
 		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
+		CErrMsg.ReleaseBuffer();
 		return FALSE;
 	}
 
@@ -387,11 +387,13 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							LOG4CPLUS_TRACE(log,"Ch:" << nCic << "Stop recording:");
 							StopRecording(nCic);
 							//CicState[nCic].szCallOutDtmf.Empty();
-							//ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-							//ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-							//ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-							//m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+							ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							ChMap[nCic].sql.ReleaseBuffer();
+
 							m_RecordingSum--;
 							checkDiskSize();
 							UpdateData(FALSE);
@@ -478,8 +480,9 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							//( '83023240','9013608365552','','2015/1/7 10:01:08','D:\RecordWav\QX150100\2015\01\07\Trunk\20150107100108_83023240_013608365552.wav','0') 
 							ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
 							ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
-							// sql wrb m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							ChMap[nCic].sql.ReleaseBuffer();
 							m_RecordingSum++;
 							UpdateData(FALSE);
 						}
