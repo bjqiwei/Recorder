@@ -466,10 +466,10 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 						
 							//根据主被叫号码判断录音方向
-						if(ChMap[nCic].szCallerId == "57062888"){
-							ChMap[nCic].wRecDirection=CALL_OUT_RECORD;
+						if(ChMap[nCic].szCalleeId == "57062888"){
+							ChMap[nCic].wRecDirection=CALL_IN_RECORD;
 						}else{
-							ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+							ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
 						} 
 						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
 						if(StartRecording(nCic)){
