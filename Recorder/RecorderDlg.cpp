@@ -366,173 +366,38 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 		ULONG32 nEventCode = message - WM_USER;	
 		
-
 		//Event notifying the state change of the monitored circuit
-		if(nEventCode == E_CHG_SpyState)	
+		switch (nEventCode)
 		{
-			LOG4CPLUS_DEBUG(log,"Ch:" << wParam << ",SanHui nEventCode:" << GetShEventName(nEventCode));
+		case E_CHG_SpyState:{
 #pragma region E_CHG_SpyState
+			LOG4CPLUS_DEBUG(log, "Ch:" << wParam << ",SanHui nEventCode:" << GetShEventName(nEventCode));
 			int nCic = wParam;
 			UINT32 nNewState = (int)lParam & 0xFFFF;
-			if(nCic >= 0 && nCic <= this->nMaxCh)
+			if (nCic >= 0 && nCic <= this->nMaxCh)
 			{
-				LOG4CPLUS_DEBUG(log, "Ch:" << nCic << "newState:" << GetShStateName(nNewState));
-				switch(nNewState)
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " newState:" << GetShStateName(nNewState));
+				switch (nNewState)
 				{
 #pragma region 空闲 //Idle state
 				case S_SPY_STANDBY:
-					{
-						if(ChMap[nCic].nState == STATE_RECORDING)
-						{
-							LOG4CPLUS_TRACE(log,"Ch:" << nCic << "Stop recording:");
-							StopRecording(nCic);
-							//CicState[nCic].szCallOutDtmf.Empty();
-							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-							ChMap[nCic].sql = "update  RecordLog set EndTime= '"+ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-							ChMap[nCic].sql.ReleaseBuffer();
-
-							m_RecordingSum--;
-							checkDiskSize();
-							UpdateData(FALSE);
-						}
-						SetChannelState(nCic,CIRCUIT_IDLE);
-						ChMap[nCic].szDtmf.Empty();
-						ChMap[nCic].szCalleeId.Empty();
-						ChMap[nCic].szCallerId.Empty();
-						ChMap[nCic].szFileName.Empty();
-					}
-					break;
-#pragma endregion 空闲
-#pragma region DTMF //Receiving phone number
-				case S_SPY_RCVPHONUM:
-					{
-						if(ChMap[nCic].nState == CIRCUIT_IDLE){
-							SetChannelState(nCic, CIRCUIT_RCV_PHONUM);
-						}
-					}
-					break;	
-#pragma endregion DTMF
-#pragma region 振铃 //Ringing
-				case S_SPY_RINGING:
-					{
-						SetChannelState(nCic, CIRCUIT_RINGING);
-						GetCallerAndCallee(nCic);
-						LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
-					}
-					break;
-#pragma endregion 振铃
-#pragma region 通话 //Talking
-				case S_SPY_TALKING:
-					{
-						if(ChMap[nCic].nState == CIRCUIT_RCV_PHONUM)
-						{
-							GetCallerAndCallee(nCic);
-							LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
-						}
-						if((ChMap[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallInCh"));
-						if((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
-							LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyGetCallOutCh"));
-
-						SetChannelState(nCic, CIRCUIT_TALKING);
-						//添加录音
-						 CTime t = CTime::GetCurrentTime(); //获取系统日期
-					 /*
-						if(t.GetYear()>2016) //获取年份
-						{
-							if(t.GetMonth()>3)//获取月份
-							{
-								break;
-							}
-						}
-						
-						if(ChMap[nCic].szCallerId.Compare("4008001100")){
-						   ChMap[nCic].szCalleeId.ReleaseBuffer();
-						   LOG4CPLUS_INFO(log, "Ch:" << nCic << "主叫号码判断不通过。");
-						   break;
-						  } */
-
-						//Start recording
-						//Record file name + Monitored circuit number + Time(hour-minute-second)
-						SYSTEMTIME st;
-						GetLocalTime(&st);
-						ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir, 
-							st.wYear, st.wMonth, st.wDay,
-							st.wYear, st.wMonth, st.wDay, 
-							st.wHour, st.wMinute, st.wSecond,
-							ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
-						
-							//根据主被叫号码判断录音方向
-						if(ChMap[nCic].szCalleeId == "57062888"){
-							ChMap[nCic].wRecDirection=CALL_IN_RECORD;
-						}else{
-							ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
-						} 
-						LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
-						if(StartRecording(nCic)){
-							SetChannelState(nCic, STATE_RECORDING);
-							ChMap[nCic].tStartTime = CTime::GetCurrentTime();
-							ChMap[nCic].nRecordTimes++;
-							//sql=INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)VALUES
-							//( '83023240','9013608365552','','2015/1/7 10:01:08','D:\RecordWav\QX150100\2015\01\07\Trunk\20150107100108_83023240_013608365552.wav','0') 
-							ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
-							ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-							ChMap[nCic].sql.ReleaseBuffer();
-							m_RecordingSum++;
-							UpdateData(FALSE);
-						}
-					}
-					break;
-#pragma endregion 通话
-#pragma region unknown
-				default:
-					{
-						LOG4CPLUS_WARN(log, "Ch:" << nCic <<  "UNKNOWN STATE:" << std::hex << nNewState);
-					}
-					break;
-#pragma endregion unknown
-				}
-			}
-			else{
-				LOG4CPLUS_WARN(log,"Ch:"<< nCic << " Error, not exsist.");
-			}
-			UpdateCircuitListCtrl(nCic);
-#pragma endregion E_CHG_SpyState
-		}
-		//Event generated by the driver when DTMF is received
-		else if(nEventCode == E_CHG_RcvDTMF)
-		{
-#pragma region E_CHG_RcvDTMF
-			//Switching from channel number to circuit number
-			int nCic = MySpyChToCic(wParam);
-			
-			if(nCic != -1)
-			{
-				char cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
-				LOG4CPLUS_INFO(log, "Ch:" << nCic << " newDTMF:" << cNewDtmf);
-				ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
-			}
-			UpdateCircuitListCtrl(nCic);
-		}
-#pragma endregion E_CHG_RcvDTMF
-		else if (nEventCode == E_CHG_HookState)
-		{
-#pragma region E_CHG_HookState
-			//Switching from channel number to circuit number
-			int nCic = MySpyChToCic(wParam);
-			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_CHG_HookState");
-			UINT32 nNewState = lParam;
-			switch(nNewState)
-			{
-#pragma region on hook
-			case S_CALL_STANDBY:
 				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_STANDBY");
+					if (ChMap[nCic].nState == STATE_RECORDING)
+					{
+						LOG4CPLUS_TRACE(log, "Ch:" << nCic << " Stop recording:");
+						StopRecording(nCic);
+						//CicState[nCic].szCallOutDtmf.Empty();
+						ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+						ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+						ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+						m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+						LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+						ChMap[nCic].sql.ReleaseBuffer();
+
+						m_RecordingSum--;
+						checkDiskSize();
+						UpdateData(FALSE);
+					}
 					SetChannelState(nCic, CIRCUIT_IDLE);
 					ChMap[nCic].szDtmf.Empty();
 					ChMap[nCic].szCalleeId.Empty();
@@ -540,67 +405,196 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					ChMap[nCic].szFileName.Empty();
 				}
 				break;
+#pragma endregion 空闲
+#pragma region DTMF //Receiving phone number
+				case S_SPY_RCVPHONUM:
+				{
+					if (ChMap[nCic].nState == CIRCUIT_IDLE){
+						SetChannelState(nCic, CIRCUIT_RCV_PHONUM);
+					}
+				}
+				break;
+#pragma endregion DTMF
+#pragma region 振铃 //Ringing
+				case S_SPY_RINGING:
+				{
+					SetChannelState(nCic, CIRCUIT_RINGING);
+					GetCallerAndCallee(nCic);
+					LOG4CPLUS_INFO(log, "Ch:" << nCic << " Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
+				}
+				break;
+#pragma endregion 振铃
+#pragma region 通话 //Talking
+				case S_SPY_TALKING:
+				{
+					if (ChMap[nCic].nState == CIRCUIT_RCV_PHONUM)
+					{
+						GetCallerAndCallee(nCic);
+						LOG4CPLUS_INFO(log, "Ch:" << nCic << "Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
+					}
+					if ((ChMap[nCic].nCallInCh = SpyGetCallInCh(nCic)) == -1)	//Get the number of incoming channel
+						LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCallInCh"));
+					if ((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
+						LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCallOutCh"));
+
+					SetChannelState(nCic, CIRCUIT_TALKING);
+					//添加录音
+					CTime t = CTime::GetCurrentTime(); //获取系统日期
+					/*
+					   if(t.GetYear()>2016) //获取年份
+					   {
+					   if(t.GetMonth()>3)//获取月份
+					   {
+					   break;
+					   }
+					   }
+
+					   if(ChMap[nCic].szCallerId.Compare("4008001100")){
+					   ChMap[nCic].szCalleeId.ReleaseBuffer();
+					   LOG4CPLUS_INFO(log, "Ch:" << nCic << "主叫号码判断不通过。");
+					   break;
+					   } */
+
+					//Start recording
+					//Record file name + Monitored circuit number + Time(hour-minute-second)
+					SYSTEMTIME st;
+					GetLocalTime(&st);
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir,
+						st.wYear, st.wMonth, st.wDay,
+						st.wYear, st.wMonth, st.wDay,
+						st.wHour, st.wMinute, st.wSecond,
+						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
+
+					//根据主被叫号码判断录音方向
+					if (ChMap[nCic].szCalleeId == "57062888"){
+						ChMap[nCic].wRecDirection = CALL_IN_RECORD;
+					}
+					else{
+						ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
+					}
+					LOG4CPLUS_INFO(log, "Ch:" << nCic << " StartRecording.");
+					if (StartRecording(nCic)){
+						SetChannelState(nCic, STATE_RECORDING);
+						ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+						ChMap[nCic].nRecordTimes++;
+						//sql=INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)VALUES
+						//( '83023240','9013608365552','','2015/1/7 10:01:08','D:\RecordWav\QX150100\2015\01\07\Trunk\20150107100108_83023240_013608365552.wav','0') 
+						ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,CustomerID,StarTime,F_Path ,Flag)";
+						ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
+						m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+						LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+						ChMap[nCic].sql.ReleaseBuffer();
+						m_RecordingSum++;
+						UpdateData(FALSE);
+					}
+				}
+				break;
+#pragma endregion 通话
+#pragma region unknown
+				default:{
+					LOG4CPLUS_WARN(log, "Ch:" << nCic << " UNKNOWN STATE:" << std::hex << nNewState);
+				}
+				break;
+#pragma endregion unknown
+				}
+			}
+			else{
+				LOG4CPLUS_WARN(log, "Ch:" << nCic << " Error, not exsist.");
+			}
+			UpdateCircuitListCtrl(nCic);
+#pragma endregion E_CHG_SpyState
+		}break;
+			//Event generated by the driver when DTMF is received
+		case E_CHG_RcvDTMF:{
+#pragma region E_CHG_RcvDTMF
+			//Switching from channel number to circuit number
+			int nCic = MySpyChToCic(wParam);
+
+			if (nCic != -1)
+			{
+				char cNewDtmf = (char)(0xFFFF & lParam);	//Newly received DTMF
+				LOG4CPLUS_INFO(log, "Ch:" << nCic << " newDTMF:" << cNewDtmf);
+				ChMap[nCic].szDtmf.AppendChar(cNewDtmf);
+			}
+			UpdateCircuitListCtrl(nCic);
+#pragma endregion E_CHG_RcvDTMF
+		}break;
+		case E_CHG_HookState:{
+#pragma region E_CHG_HookState
+			//Switching from channel number to circuit number
+			int nCic = MySpyChToCic(wParam);
+			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_CHG_HookState");
+			UINT32 nNewState = lParam;
+			switch (nNewState)
+			{
+#pragma region on hook
+			case S_CALL_STANDBY:
+			{
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_STANDBY");
+				SetChannelState(nCic, CIRCUIT_IDLE);
+				ChMap[nCic].szDtmf.Empty();
+				ChMap[nCic].szCalleeId.Empty();
+				ChMap[nCic].szCallerId.Empty();
+				ChMap[nCic].szFileName.Empty();
+			}
+			break;
 #pragma endregion on hook
 #pragma region off hook
 
 			case S_CALL_PICKUPED:
-				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_PICKUPED");
-					SetChannelState(nCic, STATE_PICKUP);
-				}
-				break;
+			{
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_PICKUPED");
+				SetChannelState(nCic, STATE_PICKUP);
+			}
+			break;
 #pragma endregion off hook
 #pragma region S_CALL_TALKING
 			case S_CALL_TALKING:
-				{
-					LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_TALKING");
-					SetChannelState(nCic, CIRCUIT_TALKING);
-				}
-				break;
+			{
+				LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " S_CALL_TALKING");
+				SetChannelState(nCic, CIRCUIT_TALKING);
+			}
+			break;
 #pragma endregion S_CALL_TALKING
 #pragma region unkown
 			default:
-				{
-					LOG4CPLUS_WARN(log, "Ch:" << nCic << " unknown state:" << std::hex << nNewState);
-				}
-				break;
+			{
+				LOG4CPLUS_WARN(log, "Ch:" << nCic << " unknown state:" << std::hex << nNewState);
+			}
+			break;
 #pragma endregion unkown
 			}
 			UpdateCircuitListCtrl(nCic);
-		}
 #pragma endregion E_CHG_HookState
+		}
+							 break;
+		case E_CHG_ChState:{
 #pragma region E_CHG_ChState
-		else if (nEventCode == E_CHG_ChState)
-		{
 			INT32 nCic = MySpyChToCic(wParam);
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_CHG_ChState");
-
-		}
 #pragma endregion E_CHG_ChState
+		}break;
+		case E_SYS_BargeIn:{
 #pragma region E_SYS_BargeIn
-		else if (nEventCode == E_SYS_BargeIn)
-		{
 			INT32 nCic = MySpyChToCic(wParam);
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_SYS_BargeIn");
-		}
 #pragma endregion E_SYS_BargeIn
+		}break;
+		case E_SYS_NoSound:{
 #pragma region E_SYS_NoSound
-		else if (nEventCode == E_SYS_NoSound)
-		{
 			INT32 nCic = MySpyChToCic(wParam);;
 			LOG4CPLUS_DEBUG(log, "Ch:" << nCic << " E_SYS_NoSound");
-		}
 #pragma endregion E_SYS_NoSound
+		}break;
+		case E_CHG_PcmLinkStatus:{
 #pragma region E_CHG_PcmLinkStatus
-		else if (nEventCode == E_CHG_PcmLinkStatus)
-		{
 			LOG4CPLUS_DEBUG(log, "Pcm:" << wParam << " E_CHG_PcmLinkStatus");
-		}
 #pragma endregion E_CHG_PcmLinkStatus
-		else
-		{
+		}
+		default:{
 			INT32 nCic = MySpyChToCic(wParam);
-			LOG4CPLUS_WARN(log, "Ch:" << nCic << " unresolve Event:" << std::hex << nEventCode);
+			LOG4CPLUS_WARN(log, "Ch:" << nCic << " unresolve Event:0x" << std::hex << nEventCode);
+		}break;
 		}
 
 	}
@@ -993,10 +987,11 @@ std::string CRecorderDlg::GetShEventName(unsigned int nEvent){
 }
 std::string CRecorderDlg::GetShStateName(unsigned int nState){
 	switch(nState){
-	case S_SPY_STANDBY:	return "S_SPY_STANDBY";
-	case E_CHG_RcvDTMF:	return "E_CHG_RcvDTMF";
-	case S_SPY_RINGING: return "S_SPY_RINGING";
-	case S_SPY_TALKING:	return "S_SPY_TALKING";
+	case S_SPY_STANDBY:			return "S_SPY_STANDBY";
+	case E_CHG_RcvDTMF:			return "E_CHG_RcvDTMF";
+	case S_SPY_RINGING:			return "S_SPY_RINGING";
+	case S_SPY_TALKING:			return "S_SPY_TALKING";
+	case S_CALL_UNAVAILABLE:	return "S_CALL_UNAVAILABLE";
 	default:
 		{
 			std::stringstream oss;
