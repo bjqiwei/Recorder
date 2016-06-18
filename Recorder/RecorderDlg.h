@@ -23,6 +23,7 @@ enum CIRCUIT_STATE
 	CIRCUIT_TALKING,		//State of talking
 	STATE_RECORDING,		//录音
 	STATE_PICKUP,			//摘机
+	STATE_UNUSEABLE,			//不可用
 };
 
 

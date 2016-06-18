@@ -41,7 +41,7 @@ static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		
 static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
 static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, /* DTMFWidth,*/RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
-static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机"};		
+static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机","不可用"};		
 // CRecorderDlg 对话框
 
 
@@ -351,7 +351,7 @@ void CRecorderDlg::UpdateCircuitListCtrl(unsigned int nIndex)
 	m_ChList.SetItemText(nIndex, ChTimes, strNewData);
 	m_ChList.SetItemText(nIndex, ChStartTime , ChMap[nIndex].tStartTime.Format("%Y-%m-%d %H:%M:%S"));
 	m_ChList.SetItemText(nIndex, ChFileName, ChMap[nIndex].szFileName);
-
+	UpdateData(FALSE);
 }
 
 
@@ -490,6 +490,12 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				break;
 #pragma endregion 通话
+#pragma region 不可用
+				case S_CALL_UNAVAILABLE:{
+					SetChannelState(nCic, STATE_UNUSEABLE);
+				}
+				break;
+#pragma endregion 不可用
 #pragma region unknown
 				default:{
 					LOG4CPLUS_WARN(log, "Ch:" << nCic << " UNKNOWN STATE:" << std::hex << nNewState);
