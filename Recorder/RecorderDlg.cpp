@@ -37,8 +37,8 @@ enum{
 	ChFileName,
 };
 #define  ColumnNumber (ChFileName + 1)
-static LPTSTR ColumnNameCh[ColumnNumber] = {"通道号",		"通道状态",	"主叫号码",		"被叫号码",	 /*"DTMF",*/	"录音次数",		"开始时间",	 "录音文件名称"};
-static LPTSTR ColumnName[ColumnNumber] =   {"Ch",			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
+static LPTSTR ColumnNameCh[ColumnNumber] = {TEXT("通道号"),		TEXT("通道状态"),	"主叫号码",		"被叫号码",	 /*"DTMF",*/	"录音次数",		"开始时间",	 "录音文件名称"};
+static LPTSTR ColumnName[ColumnNumber] =   {TEXT("Ch"),			"CicState",	"CallerId",		"CalleeId",	 /*"DTMF",*/    "Times",		"StartTime",   "FileName"};
 static int    ColumnWidth[ColumnNumber] =  {ChannelWidth,	StatusWidth, CallingWidth,	CalleeWidth, /* DTMFWidth,*/RecordTimesWidth,StartTimeWidth,FileNameWidth};
 
 static LPTSTR	StateName[] = {"空闲","收号","振铃","通话","录音","摘机","不可用"};		
@@ -59,8 +59,6 @@ CRecorderDlg::CRecorderDlg(CWnd* pParent /*=NULL*/)
 	, m_strTotalSize(_T(""))
 	, m_strFreeSize(_T(""))
 {
-	//m_nRecFormat = 2;
-	m_nCallFnMode = 0;
 
 	this->log = log4cplus::Logger::getInstance(_T("Recorder"));
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -862,43 +860,10 @@ void CRecorderDlg::checkDiskSize(void)
 bool CRecorderDlg::StopRecording(unsigned long nCic)
 {
 	//Call the function with circuit number as its parameter
-	if(m_nCallFnMode == 0)				
-	{
-		//stop recording
-		if(SpyStopRecToFile(nCic) == -1){
-			LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
-			return false;
-		}
-	}
-	//Call the function with channel number as its parameter
-	else
-	{
-		if(ChMap[nCic].wRecDirection == CALL_IN_RECORD)
-		{
-			if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1){
-				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
-		else if(ChMap[nCic].wRecDirection == CALL_OUT_RECORD)
-		{
-			if(SsmStopRecToFile(ChMap[nCic].nCallOutCh) == -1){
-				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
-		else
-		{
-			if(SsmSetRecMixer(ChMap[nCic].nCallInCh, FALSE, 0) == -1)//Turn off the record mixer
-				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmSetRecMixer"));
-			if(SsmStopLinkFrom(ChMap[nCic].nCallOutCh, ChMap[nCic].nCallInCh) == -1)//Cut off the bus connect from outgoing channel to incoming channel
-				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopLinkFrom"));
-			if(SsmStopRecToFile(ChMap[nCic].nCallInCh) == -1)		//Stop recording
-			{
-				LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SsmStopRecToFile"));
-				return false;
-			}
-		}
+	//stop recording
+	if(SpyStopRecToFile(nCic) == -1){
+		LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
+		return false;
 	}
 	return true;
 }
@@ -910,46 +875,11 @@ bool CRecorderDlg::StartRecording(unsigned long nIndex){
 	szDir = szDir.Left(szDir.ReverseFind('\\'));
 	CreateMultipleDirectory(szDir);
 	LOG4CPLUS_TRACE(log, "Ch:" << nIndex << ", record file:" << szFile);
-	if(m_nCallFnMode == 0)	//Call the function with circuit number as its parameter
-	{
-		if(SpyRecToFile(nIndex, ChMap[nIndex].wRecDirection, szFile, -1, 0L, -1, -1, 0) == -1)
-			LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyRecToFile"));
-		else{
-			return true;
-		}
-	}
-	else if(m_nCallFnMode == 1)		//Call the function with channel number as its parameter
-	{
-		if(ChMap[nIndex].wRecDirection == CALL_IN_RECORD)
-		{
-			if(SsmRecToFile(ChMap[nIndex].nCallInCh,szFile, -1, 0L, -1, -1, 0) == -1)
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
-		}
-		else if(ChMap[nIndex].wRecDirection == CALL_OUT_RECORD)
-		{
-			if(SsmRecToFile(ChMap[nIndex].nCallOutCh, szFile, -1, 0L, -1, -1, 0) == -1)
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
-		}
-		else
-		{
-			if(SsmLinkFrom(ChMap[nIndex].nCallOutCh, ChMap[nIndex].nCallInCh) == -1)  //Connect the bus from outgoing channel to incoming channel
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmLinkFrom"));
-
-			if(SsmSetRecMixer(ChMap[nIndex].nCallInCh, TRUE, 0) == -1)		//Turn on the record mixer
-				LOG4CPLUS_ERROR(log,"Ch:" << nIndex <<  _T(" Fail to call SsmSetRecMixer"));
-
-			if(SsmRecToFile(ChMap[nIndex].nCallInCh, szFile, -1, 0L, -1, -1, 0) == -1)//Recording
-				LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SsmRecToFile"));
-			else{
-				return true;
-			}
-		}
+	
+	if(SpyRecToFile(nIndex, ChMap[nIndex].wRecDirection, szFile, -1, 0L, -1, -1, 0) == -1)
+		LOG4CPLUS_ERROR(log, "Ch:" << nIndex <<  _T(" Fail to call SpyRecToFile"));
+	else{
+		return true;
 	}
 	return false;
 }

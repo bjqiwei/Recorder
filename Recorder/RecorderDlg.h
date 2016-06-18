@@ -81,7 +81,7 @@ public:
 	CListCtrl m_ChList;
 	CImageList m_ImageList;
 	//int		m_nRecFormat;
-	int		m_nCallFnMode;
+	//int		m_nCallFnMode;
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 private:
 	CIC_STRUCT ChMap[MAX_CH];	//Monitored circuits
