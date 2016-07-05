@@ -110,6 +110,12 @@ BOOL CRecorderApp::InitInstance()
 	std::string strSerial = oss.str();
 	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:DDAB04" << strSerial);
 	bool flagTime=true;
+	CTime t(2018,10,31,0,0,0);
+	
+	if(CTime::GetCurrentTime() > t) 
+	{
+		flagTime = false;
+	}
 
 	if ("BFEBFBFF000206A71FBAE3FF" == strSerial&&flagTime)
 	{
@@ -128,7 +134,7 @@ BOOL CRecorderApp::InitInstance()
 			//  “取消”来关闭对话框的代码
 		}
 	}else{
-		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"Error Info serial");
+		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"Error Info serial or restricted by time");
 	}
 	// 删除上面创建的 shell 管理器。
 	if (pShellManager != NULL)
