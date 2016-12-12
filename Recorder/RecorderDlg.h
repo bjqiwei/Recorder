@@ -142,6 +142,7 @@ public:
 	int MySpyChToCic(int nCh);
 	static std::string GetShEventName(unsigned int nEvent);
 	static std::string GetShStateName(unsigned int nState);
+	static const std::string & GetVersion();
 #define WM_ICON_NOTIFY (WM_USER + MAX_EVENT_SIZE + 1)
 	CSystemTray m_TrayIcon; 
 	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);

@@ -10,8 +10,10 @@
 #include "CPUID.h"
 #include <sstream>
 #include <iomanip>
+#include <DbgHelp.h>
 #include <log4cplus/loggingmacros.h>
 
+#pragma comment( lib, "DbgHelp" )
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -39,6 +41,88 @@ CRecorderApp::CRecorderApp()
 CRecorderApp theApp;
 TCHAR szPath[MAX_PATH];
 
+#define CALL_FIRST 1  
+#define CALL_LAST 0
+
+BOOL CALLBACK MiniDumpCallback(PVOID pParam, const PMINIDUMP_CALLBACK_INPUT   pInput,
+	PMINIDUMP_CALLBACK_OUTPUT pOutput)
+
+{
+	// Callback implementation
+
+	if (pInput == NULL)
+		return FALSE;
+
+	if (pOutput == NULL)
+		return FALSE;
+
+	if (pInput->CallbackType == ModuleCallback)
+	{
+		return TRUE;
+	}
+
+	return TRUE;
+
+}
+
+
+LONG WINAPI
+VectoredHandler(
+struct _EXCEPTION_POINTERS *ExceptionInfo
+	)
+{
+
+	if (ExceptionInfo->ExceptionRecord->ExceptionCode == 0x406D1388
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0xE06D7363
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x000006BA
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x8001010D
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x80010108
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x40010006
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x80000003
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0x80000004
+		|| ExceptionInfo->ExceptionRecord->ExceptionCode == 0xC0000095
+		)
+	{
+	}
+	else{
+		DWORD pId = GetCurrentProcessId();
+		std::stringstream oss;
+		oss << "d:\\log" << L"\\" << pId <<L"." << CRecorderDlg::GetVersion() <<  L".dmp";
+		std::string dmpFile = oss.str();
+		HANDLE lhDumpFile = CreateFile(dmpFile.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		MINIDUMP_EXCEPTION_INFORMATION loExceptionInfo;
+		loExceptionInfo.ExceptionPointers = ExceptionInfo;
+		loExceptionInfo.ThreadId = GetCurrentThreadId();
+		loExceptionInfo.ClientPointers = TRUE;
+		if (lhDumpFile != INVALID_HANDLE_VALUE)
+		{
+			MINIDUMP_CALLBACK_INFORMATION mci;
+
+			mci.CallbackRoutine = MiniDumpCallback;
+			mci.CallbackParam = NULL;     // this example does not use the context
+
+			MiniDumpWriteDump(GetCurrentProcess(), pId, lhDumpFile, MINIDUMP_TYPE(
+				MiniDumpWithDataSegs |
+				MiniDumpWithUnloadedModules |
+				MiniDumpWithProcessThreadData),
+				&loExceptionInfo,
+				NULL,
+				NULL);
+			CloseHandle(lhDumpFile);
+			//MessageBox(NULL, "Stop", "" ,MB_OK);
+		}
+	}
+	/*std::string info = "你所使用的坐席程序发生了一个意外错误，请将此窗口截图和文件\r\n";
+	info += dmpFile;
+	info += "提交给开发人员，并重启程序。";
+
+	std::string caption = "坐席插件崩溃:";
+	caption += CloopenAgentBase::GetVersion();*/
+	//MessageBox(NULL, info.c_str() , caption.c_str() , MB_OK);
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+
 // CRecorderApp 初始化
 
 BOOL CRecorderApp::InitInstance()
@@ -58,6 +142,11 @@ BOOL CRecorderApp::InitInstance()
 
 
 	AfxEnableControlContainer();
+
+	PVOID h1 = NULL;
+	if (h1 == NULL){
+		h1 = AddVectoredExceptionHandler(CALL_FIRST, VectoredHandler);
+	}
 
 	// 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。
@@ -141,7 +230,7 @@ BOOL CRecorderApp::InitInstance()
 			//  “取消”来关闭对话框的代码
 		}
 	}else{
-		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"Error Info serial or restricted by time");
+		LOG4CPLUS_ERROR(log4cplus::Logger::getRoot(),"Error Info serial or restricted by time. version:" << CRecorderDlg::GetVersion());
 	}
 	// 删除上面创建的 shell 管理器。
 	if (pShellManager != NULL)
@@ -151,6 +240,10 @@ BOOL CRecorderApp::InitInstance()
 
 	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
 	//  而不是启动应用程序的消息泵。
+	if (h1){
+		RemoveVectoredExceptionHandler(h1);
+		h1 = NULL;
+	}
 	return FALSE;
 }
 

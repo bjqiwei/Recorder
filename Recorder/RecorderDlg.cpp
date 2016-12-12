@@ -12,6 +12,9 @@
 #include "oledb2.h"
 #include <iosfwd>
 
+
+#pragma comment(lib,"version")
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -183,7 +186,7 @@ HCURSOR CRecorderDlg::OnQueryDragIcon()
 //Initialize board
 BOOL CRecorderDlg::InitCtiBoard()
 {
-	LOG4CPLUS_INFO(log,_T("Application start..."));
+	LOG4CPLUS_INFO(log,_T("Application start...") << GetVersion());
 	CString szCurPath;				//Current path
 	CString szShIndex;					//path to ShIndex.ini
 	CString szShConfig;				//path to ShConfig.ini
@@ -1094,4 +1097,44 @@ int CRecorderDlg::MySpyChToCic(int nCh)
 		LOG4CPLUS_DEBUG(log,"Ch:" << nCh << " change to cic nCic:" << nCic);
 	}
 	return nCic;
+}
+
+const std::string & CRecorderDlg::GetVersion()
+{
+	static std::string result;
+	TCHAR szFullPath[MAX_PATH];
+
+	if (!result.empty())
+		return result;
+
+	result = "0.0.0.0";
+	VS_FIXEDFILEINFO *pVerInfo = NULL;
+	DWORD dwTemp, dwSize, dwHandle = 0;
+	BYTE *pData = NULL;
+	UINT uLen;
+	GetModuleFileName(NULL, szFullPath, sizeof(szFullPath));
+	dwSize = GetFileVersionInfoSize(szFullPath, &dwTemp);
+
+	pData = new BYTE[dwSize];
+
+	GetFileVersionInfo(szFullPath, dwHandle, dwSize, pData);
+	VerQueryValue(pData, "\\", (void **)&pVerInfo, &uLen);
+
+
+	DWORD verMS = pVerInfo->dwFileVersionMS;
+	DWORD verLS = pVerInfo->dwFileVersionLS;
+
+	int ver[4];
+	ver[0] = HIWORD(verMS);
+	ver[1] = LOWORD(verMS);
+	ver[2] = HIWORD(verLS);
+	ver[3] = LOWORD(verLS);
+
+	std::stringstream ss;
+	ss << ver[0] << "." << ver[1] << "." << ver[2] << "." << ver[3];
+	result = ss.str();
+	//LOG4CPLUS_INFO(log, "result:" << result);
+
+	delete[] pData;
+	return result;
 }
