@@ -118,7 +118,7 @@ BOOL CRecorderDlg::OnInitDialog()
 	if(!InitCtiBoard())		
 	{
 		//PostQuitMessage(0);
-		//return FALSE;
+		return FALSE;
 	}
 	//Set event-driven mode
 	EVENT_SET_INFO EventSet;		
