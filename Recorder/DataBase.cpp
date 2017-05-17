@@ -76,7 +76,7 @@ unsigned int DataBase::DataBaseThreadProc( void *pParam )
 				}
 			}
 			else{
-				LOG4CPLUS_TRACE(log, "get data from sql queue, timeout:60*1000ms");
+				//LOG4CPLUS_TRACE(log, "get data from sql queue, timeout:60*1000ms");
 				if(db->m_sqlQueue.getData(sql,60*1000)){
 					LOG4CPLUS_TRACE(log, "get a sql:" << sql);
 					db->m_dataBase.Execute(_bstr_t(sql.c_str()));

@@ -504,6 +504,30 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #pragma region 不可用
 				case S_CALL_UNAVAILABLE:{
 					SetChannelState(nCic, STATE_UNUSEABLE);
+					if (nCic >= 0 && nCic <= this->nMaxCh)
+					{
+						if (ChMap[nCic].nState == STATE_RECORDING)
+						{
+							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " Stop recording:");
+							StopRecording(nCic);
+							//CicState[nCic].szCallOutDtmf.Empty();
+							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+							ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+							//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+							ChMap[nCic].sql.ReleaseBuffer();
+
+							m_RecordingSum--;
+							checkDiskSize();
+						}
+						SetChannelState(nCic, CIRCUIT_IDLE);
+						ChMap[nCic].szDtmf.Empty();
+						ChMap[nCic].szCalleeId.Empty();
+						ChMap[nCic].szCallerId.Empty();
+						ChMap[nCic].szFileName.Empty();
+						UpdateData(FALSE);
+					}
 				}
 				break;
 #pragma endregion 不可用
