@@ -458,14 +458,21 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 					//Start recording
 					//Record file name + Monitored circuit number + Time(hour-minute-second)
+#ifdef SINGLERECORD
+#define SUFFIX "wav"
+#else
+#define SUFFIX "mp3"
+#endif
+
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir,
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s."SUFFIX, m_strFileDir,
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay,
 						st.wHour, st.wMinute, st.wSecond,
 						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 
+#ifdef SINGLERECORD
 					//根据主被叫号码判断录音方向
 					if (ChMap[nCic].szCalleeId == "57062888"){
 						ChMap[nCic].wRecDirection = CALL_IN_RECORD;
@@ -473,6 +480,9 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					else{
 						ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
 					}
+#else
+					ChMap[nCic].wRecDirection = MIX_RECORD;
+#endif
 					LOG4CPLUS_INFO(log, "Ch:" << nCic << " StartRecording.");
 					if (StartRecording(nCic)){
 						SetChannelState(nCic, STATE_RECORDING);
