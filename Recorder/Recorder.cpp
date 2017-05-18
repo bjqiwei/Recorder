@@ -206,6 +206,12 @@ BOOL CRecorderApp::InitInstance()
 	std::string strSerial = oss.str();
 	LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"CPU Serial:DDAB04" << strSerial);
 	bool flagTime=true;
+	CTime t(2018,6,1,0,0,0);
+	
+	if(CTime::GetCurrentTime() > t) 
+	{
+		flagTime = false;
+	}
 
 	if ("BFEBFBFF000206A71FBAE3FF" == strSerial&&flagTime)
 	{
