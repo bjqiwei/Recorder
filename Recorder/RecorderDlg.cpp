@@ -228,6 +228,8 @@ BOOL CRecorderDlg::InitCtiBoard()
 		LOG4CPLUS_ERROR(log, CErrMsg.GetBuffer());
 		return FALSE;
 	}
+
+#ifdef SINGLERECORD
 	DWORD SerialNo = SsmGetPciSerialNo(0);
 		 LOG4CPLUS_INFO(log4cplus::Logger::getRoot(),"1" << SerialNo);
 		if (SerialNo != 173197)
@@ -254,6 +256,8 @@ BOOL CRecorderDlg::InitCtiBoard()
 		}
 	//Judge if the number of initialized boards is the same as
 	//		   that of boards specified in the configuration file
+#endif
+
 	if(SsmGetMaxUsableBoard() != SsmGetMaxCfgBoard())
 	{
 		SsmGetLastErrMsg(CErrMsg.GetBuffer(300)); //Get error message	
