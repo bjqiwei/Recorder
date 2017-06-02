@@ -391,16 +391,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						LOG4CPLUS_TRACE(log, "Ch:" << nCic << " Stop recording:");
 						StopRecording(nCic);
-						//CicState[nCic].szCallOutDtmf.Empty();
-						ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-						ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-						ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-						m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-						//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-						ChMap[nCic].sql.ReleaseBuffer();
-
-						m_RecordingSum--;
-						checkDiskSize();
 					}
 					SetChannelState(nCic, CIRCUIT_IDLE);
 					ChMap[nCic].szDtmf.Empty();
@@ -426,6 +416,39 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					SetChannelState(nCic, CIRCUIT_RINGING);
 					GetCallerAndCallee(nCic);
 					LOG4CPLUS_INFO(log, "Ch:" << nCic << " Get Caller:" << ChMap[nCic].szCallerId << ", Callee:" << ChMap[nCic].szCalleeId);
+#ifndef SINGLERECORD
+					//添加录音
+					SYSTEMTIME st;
+					GetLocalTime(&st);
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.mp3", m_strFileDir, 
+						st.wYear, st.wMonth, st.wDay,
+						st.wYear, st.wMonth, st.wDay, 
+						st.wHour, st.wMinute, st.wSecond,
+						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);			
+
+
+					ChMap[nCic].wRecDirection = MIX_RECORD;
+
+					LOG4CPLUS_INFO(log, "Ch:" <<  nCic << " StartRecording.");
+
+					bool result = StartRecording(nCic);
+					if (result == false){
+						StopRecording(nCic);
+						result = StartRecording(nCic);
+					}
+
+					if(result){
+						SetChannelState(nCic, STATE_RECORDING);
+						ChMap[nCic].tStartTime = CTime::GetCurrentTime();
+						ChMap[nCic].nRecordTimes++;
+						ChMap[nCic].sql = "INSERT INTO RecordLog  ( CallerNum,CalleeNum,StarTime,F_Path ,Flag)";
+						ChMap[nCic].sql += "VALUES ( '" + ChMap[nCic].szCallerId + "','9" + ChMap[nCic].szCalleeId + "','" + ChMap[nCic].tStartTime.Format("%Y-%m-%d %H:%M:%S") + "','" + ChMap[nCic].szFileName + "','0') ";
+						m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+						ChMap[nCic].sql.ReleaseBuffer();
+						m_RecordingSum++;
+						UpdateData(FALSE);
+					}
+#endif
 				}
 				break;
 #pragma endregion 振铃
@@ -442,7 +465,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					if ((ChMap[nCic].nCallOutCh = SpyGetCallOutCh(nCic)) == -1)//Get the number of outgoing channel
 						LOG4CPLUS_ERROR(log, "Ch:" << nCic << _T(" Fail to call SpyGetCallOutCh"));
 
-					SetChannelState(nCic, CIRCUIT_TALKING);
+					//SetChannelState(nCic, CIRCUIT_TALKING);
 					//添加录音
 					CTime t = CTime::GetCurrentTime(); //获取系统日期
 					/*
@@ -463,20 +486,14 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					//Start recording
 					//Record file name + Monitored circuit number + Time(hour-minute-second)
 #ifdef SINGLERECORD
-#define SUFFIX "wav"
-#else
-#define SUFFIX "mp3"
-#endif
-
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s."SUFFIX, m_strFileDir,
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir,
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay,
 						st.wHour, st.wMinute, st.wSecond,
 						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 
-#ifdef SINGLERECORD
 					//根据主被叫号码判断录音方向
 					if (ChMap[nCic].szCalleeId == "57062888"){
 						ChMap[nCic].wRecDirection = CALL_IN_RECORD;
@@ -484,11 +501,16 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					else{
 						ChMap[nCic].wRecDirection = CALL_OUT_RECORD;
 					}
-#else
-					ChMap[nCic].wRecDirection = MIX_RECORD;
-#endif
+
 					LOG4CPLUS_INFO(log, "Ch:" << nCic << " StartRecording.");
-					if (StartRecording(nCic)){
+
+					bool result = StartRecording(nCic);
+					if (result == false){
+						StopRecording(nCic);
+						result = StartRecording(nCic);
+					}
+
+					if(result){
 						SetChannelState(nCic, STATE_RECORDING);
 						ChMap[nCic].tStartTime = CTime::GetCurrentTime();
 						ChMap[nCic].nRecordTimes++;
@@ -502,6 +524,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						m_RecordingSum++;
 					}
 					UpdateData(FALSE);
+#endif
 				}
 				break;
 #pragma endregion 通话
@@ -514,16 +537,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						{
 							LOG4CPLUS_TRACE(log, "Ch:" << nCic << " Stop recording:");
 							StopRecording(nCic);
-							//CicState[nCic].szCallOutDtmf.Empty();
-							ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-							ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-							ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-							m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-							//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-							ChMap[nCic].sql.ReleaseBuffer();
-
-							m_RecordingSum--;
-							checkDiskSize();
 						}
 						SetChannelState(nCic, CIRCUIT_IDLE);
 						ChMap[nCic].szDtmf.Empty();
@@ -558,16 +571,6 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					LOG4CPLUS_TRACE(log, "Ch:" << nCic << " Stop recording:");
 					StopRecording(nCic);
-					//CicState[nCic].szCallOutDtmf.Empty();
-					ChMap[nCic].tEndTime = CTime::GetCurrentTime();
-					ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
-					ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
-					m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
-					//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
-					ChMap[nCic].sql.ReleaseBuffer();
-
-					m_RecordingSum--;
-					checkDiskSize();
 				}
 				SetChannelState(nCic, CIRCUIT_IDLE);
 				ChMap[nCic].szDtmf.Empty();
@@ -942,6 +945,17 @@ bool CRecorderDlg::StopRecording(unsigned long nCic)
 		LOG4CPLUS_ERROR(log, "Ch:" << nCic <<  _T(" Fail to call SpyStopRecToFile"));
 		return false;
 	}
+	//CicState[nCic].szCallOutDtmf.Empty();
+	ChMap[nCic].tEndTime = CTime::GetCurrentTime();
+	ChMap[nCic].sql = "update  RecordLog set EndTime= '" + ChMap[nCic].tEndTime.Format("%Y-%m-%d %H:%M:%S") + "'";
+	ChMap[nCic].sql += "  where F_Path='" + ChMap[nCic].szFileName + "'";
+	m_sqlServerDB.addSql2Queue(ChMap[nCic].sql.GetBuffer());
+	//LOG4CPLUS_TRACE(log, "Ch:" << nCic << " addSql2Queue:" << ChMap[nCic].sql.GetBuffer());
+	ChMap[nCic].sql.ReleaseBuffer();
+
+	m_RecordingSum--;
+	checkDiskSize();
+
 	return true;
 }
 
