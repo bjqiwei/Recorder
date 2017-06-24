@@ -420,10 +420,10 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					//添加录音
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.mp3", m_strFileDir, 
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d03d_%s_%s.mp3", m_strFileDir, 
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay, 
-						st.wHour, st.wMinute, st.wSecond,
+						st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
 						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);			
 
 
@@ -488,10 +488,10 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #ifdef SINGLERECORD
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d_%s_%s.wav", m_strFileDir,
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d03d_%s_%s.wav", m_strFileDir,
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay,
-						st.wHour, st.wMinute, st.wSecond,
+						st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
 						ChMap[nCic].szCallerId, ChMap[nCic].szCalleeId);
 
 					//根据主被叫号码判断录音方向
