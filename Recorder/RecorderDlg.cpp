@@ -420,7 +420,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					//Ìí¼ÓÂ¼Òô
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d03d_%s_%s.mp3", m_strFileDir, 
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d%03d_%s_%s.mp3", m_strFileDir, 
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay, 
 						st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
@@ -488,7 +488,7 @@ LRESULT CRecorderDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 #ifdef SINGLERECORD
 					SYSTEMTIME st;
 					GetLocalTime(&st);
-					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d03d_%s_%s.wav", m_strFileDir,
+					ChMap[nCic].szFileName.Format("%s\\%04d\\%02d\\%02d\\%04d%02d%02d%02d%02d%02d%03d_%s_%s.wav", m_strFileDir,
 						st.wYear, st.wMonth, st.wDay,
 						st.wYear, st.wMonth, st.wDay,
 						st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
